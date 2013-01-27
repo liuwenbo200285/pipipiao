@@ -23,12 +23,9 @@ public class JsoupUtil {
 	public static void main(String[] args) throws Exception {
 //		InputStream inputStream = new FileInputStream(new File("/Users/wenbo/Desktop/1230602"));
 //		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream,"GBK"));
-		String str = "0,<span id='id_6c000G601108' class='base_txtdiv' onmouseover=javascript:onStopHover('6c000G601108#CWQ#IOQ') onmouseout='onStopOut()'>G6011</span>,<img src='/otsweb/images/tips/first.gif'>&nbsp;&nbsp;&nbsp;&nbsp;长沙南&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;07:00,<img src='/otsweb/images/tips/last.gif'>&nbsp;&nbsp;&nbsp;&nbsp;深圳北&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;10:20,03:20,--,<font color='darkgray'>无</font>,<font color='darkgray'>无</font>,4,--,--,--,--,--,--,--,<a name='btn130_2' class='btn130_2' style='text-decoration:none;' onclick=javascript:getSelected('G6011#03:20#07:00#6c000G601108#CWQ#IOQ#10:20#长沙南#深圳北#01#07#O*****0005M*****0000P*****0000#35EB8F56585E40AB3F341A1C908FA836604716C818826A3EF5E0601F#Q6')>预&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;订</a>";
+//		String str = "0,<span id='id_6c000G601108' class='base_txtdiv' onmouseover=javascript:onStopHover('6c000G601108#CWQ#IOQ') onmouseout='onStopOut()'>G6011</span>,<img src='/otsweb/images/tips/first.gif'>&nbsp;&nbsp;&nbsp;&nbsp;长沙南&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;07:00,<img src='/otsweb/images/tips/last.gif'>&nbsp;&nbsp;&nbsp;&nbsp;深圳北&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;10:20,03:20,--,<font color='darkgray'>无</font>,<font color='darkgray'>无</font>,4,--,--,--,--,--,--,--,<a name='btn130_2' class='btn130_2' style='text-decoration:none;' onclick=javascript:getSelected('G6011#03:20#07:00#6c000G601108#CWQ#IOQ#10:20#长沙南#深圳北#01#07#O*****0005M*****0000P*****0000#35EB8F56585E40AB3F341A1C908FA836604716C818826A3EF5E0601F#Q6')>预&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;订</a>";
 //		IOUtils.closeQuietly(bufferedReader);
 //		IOUtils.closeQuietly(inputStream);
-		Document document = Jsoup.parse(str);
-		checkHaveTicket(document,4);
-		
 	}
 	
 	
@@ -81,9 +78,8 @@ public class JsoupUtil {
 			List<Node> nodes = document.childNode(0).childNodes().get(1).childNodes();
 			Node node = null;
 			int n = 1;
-			for(int i = 10; i < nodes.size(); i++){
+			for(int i = 5; i < nodes.size(); i++){
 				node = nodes.get(i);
-				StringUtils.remove(node.toString(),"&nbsp;");
 			    if(StringUtils.contains(node.toString(),"--")){
 			    	String[] nos = StringUtils.split(node.toString(),",");
 			    	if(nos != null && nos.length > 0){
@@ -113,6 +109,7 @@ public class JsoupUtil {
 			    		System.out.println("有大量的票!");
 			    		return true;
 			    	}
+			    	n++;
 			    }else if(node.hasAttr("onclick")){
 					String info = node.childNode(0).toString();
 					System.out.println(info);

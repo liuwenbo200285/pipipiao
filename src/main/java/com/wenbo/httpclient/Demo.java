@@ -2,6 +2,7 @@ package com.wenbo.httpclient;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -23,10 +24,12 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpVersion;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpRequestRetryHandler;
@@ -36,8 +39,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.conn.params.ConnManagerParams;
-import org.apache.http.conn.params.ConnPerRouteBean;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
@@ -45,17 +46,20 @@ import org.apache.http.cookie.Cookie;
 import org.apache.http.cookie.CookieOrigin;
 import org.apache.http.cookie.CookieSpecFactory;
 import org.apache.http.cookie.MalformedCookieException;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.impl.cookie.BrowserCompatSpec;
+import org.apache.http.impl.io.ChunkedInputStream;
+import org.apache.http.io.SessionInputBuffer;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreConnectionPNames;
-import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.CoreProtocolPNames;
 import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.ExecutionContext;
 import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
@@ -173,11 +177,7 @@ public class Demo {
 		httpClient.getCookieSpecs().register("easy", csf);
 		httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, "easy");
 		httpClient.setHttpRequestRetryHandler(myRetryHandler);
-		HttpParams httpParams = httpClient.getParams(); 
-        // 设置连接超时时间  
-        HttpConnectionParams.setConnectionTimeout(httpParams, CONNECT_TIMEOUT);  
-        // 设置读取超时时间  
-        HttpConnectionParams.setSoTimeout(httpParams, READ_TIMEOUT);  
+//		httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_0);
 		//请求超时
 		httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 15000); 
 		//读取超时 
@@ -304,7 +304,7 @@ public class Demo {
 //				printlnResponseData(response);
 			}else if(response.getStatusLine().getStatusCode() == 200){
 //				printlnResponseData(response);
-				searchTicket("2013-02-14");
+				searchTicket("2013-02-10");
 			}
 			
 		} catch (Exception e) {
@@ -326,9 +326,9 @@ public class Demo {
 			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/querySingleAction.do")
 			    .setParameter("method","queryLeftTicket")
 			    .setParameter("orderRequest.train_date",date)
-			    .setParameter("orderRequest.from_station_telecode", "CSQ")
-			    .setParameter("orderRequest.to_station_telecode", "IOQ")
-			    .setParameter("orderRequest.train_no", "62000K901709")
+			    .setParameter("orderRequest.from_station_telecode", "CWQ")
+			    .setParameter("orderRequest.to_station_telecode", "SZQ")
+			    .setParameter("orderRequest.train_no", "6a000K907507")
 			    .setParameter("trainPassType","QB")
 			    .setParameter("trainClass", "K#")
 			    .setParameter("includeStudent","00")
@@ -364,7 +364,7 @@ public class Demo {
 				System.out.println(document.toString());
 				getLoginRand();
 			}
-			if(JsoupUtil.checkHaveTicket(document,10)){
+			if(JsoupUtil.checkHaveTicket(document,7)){
 				System.out.println("有票了，开始订票~~~~~~~~~");
 				String[] params = JsoupUtil.getTicketInfo(document);
 				orderTicket(date,params);
@@ -390,6 +390,7 @@ public class Demo {
 	 */
 	public static void orderTicket(String date,String[] params) throws IllegalStateException, IOException{
 		HttpPost httpPost = null;
+		OutputStream outputStream = null;
 		try {
 			URIBuilder builder = new URIBuilder();
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
@@ -420,26 +421,36 @@ public class Demo {
 			parameters.add(new BasicNameValuePair("trainno4", params[3]));
 			parameters.add(new BasicNameValuePair("ypInfoDetail", params[11]));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
+//			uef.setChunked(true);
 			builder.setScheme("https").setHost("dynamic.12306.cn").setPath(UrlEnum.BOOK_TICKET.getPath());
 			URI uri = builder.build();
 			httpPost = getHttpPost(uri,UrlEnum.BOOK_TICKET);
+//			uef.setChunked(true);
+			uef.setContentEncoding("gb2312");
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if(response.getStatusLine().getStatusCode() == 302){
-//				Header locationHeader = response.getFirstHeader("Location");
-////				locationHeader.
-//				getLeftTicket(locationHeader.getValue(), params,date);
-//				httpPost.setURI(new URI(locationHeader.getValue()));
-//				response = httpClient.execute(httpPost);
-//				printlnResponseData(response);
+				Header locationHeader = response.getFirstHeader("Location");
+				System.out.println(locationHeader.getValue());
 			}else if(response.getStatusLine().getStatusCode() == 200){
-				System.out.println("非法订票请求!!!!!");
+//				printlnResponseData(response);
+				HttpEntity httpEntity = response.getEntity();
+				if(httpEntity.isChunked()){
+					System.out.println(EntityUtils.toString(httpEntity,"UTF-8"));
+//					ByteArrayInputStream in = new ByteArrayInputStream(EntityUtils.toByteArray(httpEntity));
+//					MyChunkedInputStream myChunkedInputStream
+//					= new MyChunkedInputStream(in);
+//					Document document = JsoupUtil.getPageDocument(myChunkedInputStream);
+//					System.out.println(document.getAllElements());
+				}
+			}else{
 				printlnResponseData(response);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}finally{
 			HttpClientUtils.closeQuietly(response);
+			IOUtils.closeQuietly(outputStream);
 		}
 	}
 	
@@ -517,7 +528,7 @@ public class Demo {
 			try {
 				inputStream = response.getEntity().getContent();
 				BufferedReader reader = new BufferedReader(
-		                 new InputStreamReader(inputStream,"UTF-8"));
+		                 new InputStreamReader(inputStream,"gb2312"));
 				String str = null;
 				while((str = reader.readLine()) != null){
 					 System.out.println(str);
