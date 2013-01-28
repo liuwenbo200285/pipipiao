@@ -2,26 +2,19 @@ package com.wenbo.httpclient;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
@@ -51,7 +44,6 @@ import org.apache.http.cookie.Cookie;
 import org.apache.http.cookie.CookieOrigin;
 import org.apache.http.cookie.CookieSpecFactory;
 import org.apache.http.cookie.MalformedCookieException;
-import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
@@ -210,29 +202,17 @@ public class Demo {
 	public static boolean test() throws IllegalStateException, IOException{
 	    try {
 			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/confirmPassengerAction.do")
-		    .setParameter("method","getQueueCount")
-		    .setParameter("train_date","2013-02-14")
-		    .setParameter("train_no","62000K901709")
-		    .setParameter("station","K9017")
-		    .setParameter("seat","O")
-		    .setParameter("from","CWQ")
-		    .setParameter("to","IOQ")
-		    .setParameter("ticket","O038850183M060350021P071950000");
+			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb");
 			URI uri = builder.build();
-			HttpGet httpGet = new HttpGet(uri);
-			httpGet.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.52 Safari/537.17");
-			httpGet.addHeader("Connection","keep-alive");
-			httpGet.addHeader("Cache-Control","max-age=0");
-			httpGet.addHeader("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-			httpGet.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+			HttpGet httpGet =  new HttpGet(uri);
 			httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
+			httpGet.addHeader("Cache-Control","max-age=0");
+			httpGet.addHeader("Connection","keep-alive");
 			httpGet.addHeader("Host","dynamic.12306.cn");
+			httpGet.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.52 Safari/537.17");
 			response = httpClient.execute(httpGet);
-			Document document = JsoupUtil.getPageDocument(response.getEntity().getContent());
-			if(document.getElementById("loginForm") == null){
-				return true;
-			}
+			HttpEntity entity = response.getEntity();
+			System.out.println(EntityUtils.toString(entity));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}finally{
@@ -302,14 +282,7 @@ public class Demo {
 			if(response.getStatusLine().getStatusCode() == 302){
 			}else if(response.getStatusLine().getStatusCode() == 404){
 			}else if(response.getStatusLine().getStatusCode() == 200){
-				HttpEntity entity = response.getEntity();
-				if (entity != null) {
-		            // 将源码流保存在一个byte数组当中，因为可能需要两次用到该流，
-		            byte[] bytes = EntityUtils.toByteArray(entity);
-		            ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
-		            Charset charset = ContentType.getOrDefault(entity).getCharset();
-		            System.out.println(IOUtils.toString(inputStream, charset));
-		        }
+				searchTicket("2013-02-10");
 			}
 			
 		} catch (Exception e) {
@@ -426,12 +399,9 @@ public class Demo {
 			parameters.add(new BasicNameValuePair("trainno4", params[3]));
 			parameters.add(new BasicNameValuePair("ypInfoDetail", params[11]));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
-//			uef.setChunked(true);
 			builder.setScheme("https").setHost("dynamic.12306.cn").setPath(UrlEnum.BOOK_TICKET.getPath());
 			URI uri = builder.build();
 			httpPost = getHttpPost(uri,UrlEnum.BOOK_TICKET);
-//			uef.setChunked(true);
-			uef.setContentEncoding("gb2312");
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if(response.getStatusLine().getStatusCode() == 302){
@@ -440,14 +410,7 @@ public class Demo {
 			}else if(response.getStatusLine().getStatusCode() == 200){
 //				printlnResponseData(response);
 				HttpEntity httpEntity = response.getEntity();
-				if(httpEntity.isChunked()){
-					System.out.println(EntityUtils.toString(httpEntity,"UTF-8"));
-//					ByteArrayInputStream in = new ByteArrayInputStream(EntityUtils.toByteArray(httpEntity));
-//					MyChunkedInputStream myChunkedInputStream
-//					= new MyChunkedInputStream(in);
-//					Document document = JsoupUtil.getPageDocument(myChunkedInputStream);
-//					System.out.println(document.getAllElements());
-				}
+				System.out.println(EntityUtils.toString(httpEntity));
 			}else{
 				printlnResponseData(response);
 			}
@@ -556,12 +519,12 @@ public class Demo {
 			httpPost.addHeader("Accept",urlEnum.getAccept());
 		}
 		httpPost.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
-		httpPost.addHeader("Accept-Encoding","gzip,deflate,sdch");
 		httpPost.addHeader("Cache-Control","max-age=0");
 		httpPost.addHeader("Connection","keep-alive");
 		httpPost.addHeader("Origin","https://dynamic.12306.cn");
+		httpPost.addHeader("Accept-Language","zh-CN,zh;q=0.8");
 		httpPost.addHeader("Host","dynamic.12306.cn");
-		httpPost.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.52 Safari/537.17");
+		httpPost.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17");
 		if(StringUtils.isNotEmpty(urlEnum.getxRequestWith())){
 			httpPost.addHeader("X-Requested-With",urlEnum.getxRequestWith());
 		}
@@ -580,7 +543,6 @@ public class Demo {
 			httpGet.addHeader("Accept",urlEnum.getAccept());
 		}
 		httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
-		httpGet.addHeader("Accept-Encoding","gzip,deflate,sdch");
 		httpGet.addHeader("Cache-Control","max-age=0");
 		httpGet.addHeader("Connection","keep-alive");
 		httpGet.addHeader("Host","dynamic.12306.cn");
