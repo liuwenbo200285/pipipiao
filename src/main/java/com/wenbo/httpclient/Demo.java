@@ -9,13 +9,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
@@ -29,7 +35,6 @@ import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpVersion;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpRequestRetryHandler;
@@ -46,16 +51,13 @@ import org.apache.http.cookie.Cookie;
 import org.apache.http.cookie.CookieOrigin;
 import org.apache.http.cookie.CookieSpecFactory;
 import org.apache.http.cookie.MalformedCookieException;
-import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.ContentType;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.impl.cookie.BrowserCompatSpec;
-import org.apache.http.impl.io.ChunkedInputStream;
-import org.apache.http.io.SessionInputBuffer;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreConnectionPNames;
-import org.apache.http.params.CoreProtocolPNames;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.ExecutionContext;
 import org.apache.http.protocol.HttpContext;
@@ -74,7 +76,7 @@ public class Demo {
 	
 	private static Logger logger = LoggerFactory.getLogger(Demo.class);
 	
-	private static final String RANG_CODE_PATH = "/Users/wenbo/work/yanzhengma/rangCode.jpg";
+	private static final String RANG_CODE_PATH = "F:/work/12306/rangCode.jpg";
 	
 	private static final String REFER = "https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init";
 	
@@ -171,7 +173,6 @@ public class Demo {
 			}
 			return false;
 			} };
-		
 		httpClient = new DefaultHttpClient();
 		httpClient = (DefaultHttpClient) WebClientDevWrapper.wrapClient(httpClient);
 		httpClient.getCookieSpecs().register("easy", csf);
@@ -299,12 +300,16 @@ public class Demo {
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if(response.getStatusLine().getStatusCode() == 302){
-//				printlnResponseData(response);
 			}else if(response.getStatusLine().getStatusCode() == 404){
-//				printlnResponseData(response);
 			}else if(response.getStatusLine().getStatusCode() == 200){
-//				printlnResponseData(response);
-				searchTicket("2013-02-10");
+				HttpEntity entity = response.getEntity();
+				if (entity != null) {
+		            // 将源码流保存在一个byte数组当中，因为可能需要两次用到该流，
+		            byte[] bytes = EntityUtils.toByteArray(entity);
+		            ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
+		            Charset charset = ContentType.getOrDefault(entity).getCharset();
+		            System.out.println(IOUtils.toString(inputStream, charset));
+		        }
 			}
 			
 		} catch (Exception e) {
@@ -528,10 +533,10 @@ public class Demo {
 			try {
 				inputStream = response.getEntity().getContent();
 				BufferedReader reader = new BufferedReader(
-		                 new InputStreamReader(inputStream,"gb2312"));
+		                 new InputStreamReader(inputStream));
 				String str = null;
 				while((str = reader.readLine()) != null){
-					 System.out.println(str);
+					System.out.println(str);
 				}
 			} catch (IllegalStateException e) {
 				e.printStackTrace();
