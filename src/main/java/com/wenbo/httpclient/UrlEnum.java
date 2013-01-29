@@ -1,9 +1,9 @@
 package com.wenbo.httpclient;
 
 public enum UrlEnum {
-	
+	//首页
 	INDEX_URL("/otsweb","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","","",""),
-	//登录url
+	//登录初始页面url
 	LOGIN_INIT_URL("/otsweb/loginAction.do?method=loginAysnSuggest","","","",""),
 	//登录验证码
 	LOGIN_RANGCODE_URL("/passCodeAction.do?rand=sjrand","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","","",""),
@@ -11,6 +11,10 @@ public enum UrlEnum {
 	LONGIN_CONFIM("/otsweb/loginAction.do","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 			"https://dynamic.12306.cn/otsweb/loginAction.do?method=init",
 			"application/x-www-form-urlencoded",""),
+	//获取人物信息url
+	GET_ORDER_PERSON("/otsweb/order/confirmPassengerAction.do","application/json, text/javascript, */*",
+			"","application/x-www-form-urlencoded",
+			"XMLHttpRequest"),
 	//查询火车票
 	SEARCH_TICKET("/otsweb/order/querySingleAction.do","","https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init","",""),
 	//点击预定

@@ -8,13 +8,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 import javax.net.ssl.SSLContext;
@@ -32,7 +33,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpRequestRetryHandler;
-import org.apache.http.client.UserTokenHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -63,7 +63,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.wenbo.pipipiao.domain.ConfigInfo;
+import com.wenbo.pipipiao.domain.UserInfo;
+import com.wenbo.pipipiao.util.ConfigUtil;
 
 public class Demo {
 	
@@ -72,7 +76,7 @@ public class Demo {
 	
 	private static Logger logger = LoggerFactory.getLogger(Demo.class);
 	
-	private static final String RANG_CODE_PATH = "F:/work/12306/rangCode.jpg";
+	private static final String RANG_CODE_PATH = "/Users/wenbo/work/yanzhengma/rangCode.jpg";
 	
 	private static final String REFER = "https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init";
 	
@@ -102,13 +106,16 @@ public class Demo {
     private static HttpResponse response = null;
     
     private static String rangCode = null;
+    
+    private static Map<String,UserInfo> userInfoMap = null;
+    
+    private static ConfigInfo configInfo;
+    
+    private static UserInfo userInfo;
 	
-	//确定预定验证码 https://dynamic.12306.cn/otsweb/passCodeAction.do?rand=randp
 	/**
 	 * 避免HttpClient的”SSLPeerUnverifiedException: peer not authenticated”异常
 	 * 不用导入SSL证书
-	 *
-	 *
 	 */
 	public static class WebClientDevWrapper {
 
@@ -137,6 +144,8 @@ public class Demo {
 	
 	public static void main(String[] args) throws ClientProtocolException,
 			IOException {
+		//加载配置文件
+		configInfo = ConfigUtil.loadConfigInfo();
 		//处理cookie
 		CookieSpecFactory csf = new CookieSpecFactory() {
 		    public BrowserCompatSpec newInstance(HttpParams params) {
@@ -176,7 +185,6 @@ public class Demo {
 		httpClient.getCookieSpecs().register("easy", csf);
 		httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, "easy");
 		httpClient.setHttpRequestRetryHandler(myRetryHandler);
-//		httpClient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_0);
 		//请求超时
 		httpClient.getParams().setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT, 15000); 
 		//读取超时 
@@ -199,15 +207,6 @@ public class Demo {
 		            return isRedirect;
 		        }
 		});
-		//token
-//		httpClient.setUserTokenHandler(new UserTokenHandler() {
-//			public Object getUserToken(HttpContext context) {
-//				Object str = context.getAttribute("org.apache.struts.taglib.html.TOKEN");
-//				System.out.println(str);
-//				return str;
-//			}
-//			});
-		 // Prepare a request object
 		getLoginRand();
 //		test();
 	}
@@ -256,9 +255,9 @@ public class Demo {
 			parameters.add(new BasicNameValuePair("loginRand",loginRand));
 			parameters.add(new BasicNameValuePair("refundLogin","N"));
 			parameters.add(new BasicNameValuePair("refundFlag", "Y"));
-			parameters.add(new BasicNameValuePair("loginUser.user_name","liuwenbo201085"));
+			parameters.add(new BasicNameValuePair("loginUser.user_name","liuwenbo200285"));
 			parameters.add(new BasicNameValuePair("nameErrorFocus",""));
-			parameters.add(new BasicNameValuePair("user.password","liuwenbo520"));
+			parameters.add(new BasicNameValuePair("user.password","2580233"));
 			parameters.add(new BasicNameValuePair("randCode",randCode));
 			parameters.add(new BasicNameValuePair("randErrorFocus",""));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
@@ -274,7 +273,8 @@ public class Demo {
 				Document document = JsoupUtil.getPageDocument(response.getEntity().getContent());
 				//判断登录状态
 				if(JsoupUtil.validateLogin(document)){
-					searchTicket("2013-02-10");
+//					searchTicket("2013-02-10");
+					getOrderPerson();
 				}else{
 					getLoginRand();
 				}
@@ -284,6 +284,42 @@ public class Demo {
 			e.printStackTrace();
 		}finally{
 			HttpClientUtils.closeQuietly(response);
+		}
+	}
+	
+	
+	/**
+	 * 获取登录账号用户信息
+	 * @throws URISyntaxException 
+	 */
+	public static void getOrderPerson() throws URISyntaxException{
+		try {
+			URIBuilder builder = new URIBuilder();
+			builder.setScheme("https").setHost("dynamic.12306.cn").setPath(UrlEnum.GET_ORDER_PERSON.getPath())
+			    .setParameter("method","getpassengerJson");
+			URI uri = builder.build();
+			HttpPost httpPost = getHttpPost(uri,UrlEnum.GET_ORDER_PERSON);
+			response = httpClient.execute(httpPost);
+			if(response.getStatusLine().getStatusCode() == 200){
+				String info = EntityUtils.toString(response.getEntity());
+				JSONObject jsonObject = JSON.parseObject(info);
+				List<UserInfo> userInfos =  JSONArray.parseArray(jsonObject.getString("passengerJson"),UserInfo.class);
+				if(userInfos == null || userInfos.size() == 0){
+					System.out.println("此账号没有添加联系人!");
+					return;
+				}
+				userInfoMap = new HashMap<String, UserInfo>();
+				UserInfo userInfo = null;
+				for(int i = 0; i < userInfos.size(); i++){
+					userInfo = userInfos.get(i);
+					if(userInfo != null){
+						userInfo.setIndex(i);
+						userInfoMap.put(userInfo.getPassenger_name(), userInfo);
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -512,7 +548,12 @@ public class Demo {
 				JSONObject jsonObject = JSON.parseObject(EntityUtils.toString(response.getEntity()));
 				if(jsonObject != null
 						&& "Y".equals(jsonObject.getString("errMsg"))){
-					checkTicket(ticketNo,seatNum,token,params,date);
+					String msg = jsonObject.getString("msg");
+					if(StringUtils.isNotEmpty(msg)){
+						System.out.println(msg);
+					}else{
+						checkTicket(ticketNo,seatNum,token,params,date);
+					}
 				}else{
 					System.out.println(jsonObject.getString("errMsg"));
 					checkOrderInfo(ticketNo,seatNum,token,params,date);
@@ -694,9 +735,7 @@ public class Demo {
 		if(StringUtils.isNotEmpty(urlEnum.getContentType())){
 			httpPost.addHeader("Content-Type",urlEnum.getContentType());
 		}
-		if(StringUtils.isNotEmpty(urlEnum.getRefer())){
-			httpPost.addHeader("Referer",urlEnum.getRefer());
-		}
+		httpPost.addHeader("Referer",REFER);
 		return httpPost;
 	}
 	
@@ -716,10 +755,7 @@ public class Demo {
 		if(StringUtils.isNotEmpty(urlEnum.getContentType())){
 			httpGet.addHeader("Content-Type",urlEnum.getContentType());
 		}
-		if(StringUtils.isNotEmpty(urlEnum.getRefer())){
-			httpGet.addHeader("Referer",urlEnum.getRefer());
-		}
-//		httpGet.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+		httpGet.addHeader("Referer",REFER);
 		return httpGet;
 	}
 	
