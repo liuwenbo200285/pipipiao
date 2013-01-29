@@ -140,8 +140,7 @@ public class JsoupUtil {
 	 * 检测登录状态
 	 * @param inputStream
 	 */
-	public static boolean validateLogin(InputStream inputStream){
-		Document document = getPageDocument(inputStream);
+	public static boolean validateLogin(Document document){
 		Element element = document.getElementById("randErr");
 		if(element != null){
 			String errorString = element.child(1).childNode(0).toString();

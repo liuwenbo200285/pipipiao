@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.cert.CertificateException;
@@ -31,6 +32,7 @@ import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpRequestRetryHandler;
+import org.apache.http.client.UserTokenHandler;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -56,9 +58,11 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 public class Demo {
@@ -96,6 +100,8 @@ public class Demo {
     public final static int READ_TIMEOUT = 10000; 
     
     private static HttpResponse response = null;
+    
+    private static String rangCode = null;
 	
 	//确定预定验证码 https://dynamic.12306.cn/otsweb/passCodeAction.do?rand=randp
 	/**
@@ -193,32 +199,17 @@ public class Demo {
 		            return isRedirect;
 		        }
 		});
+		//token
+//		httpClient.setUserTokenHandler(new UserTokenHandler() {
+//			public Object getUserToken(HttpContext context) {
+//				Object str = context.getAttribute("org.apache.struts.taglib.html.TOKEN");
+//				System.out.println(str);
+//				return str;
+//			}
+//			});
 		 // Prepare a request object
 		getLoginRand();
 //		test();
-	}
-	
-	
-	public static boolean test() throws IllegalStateException, IOException{
-	    try {
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb");
-			URI uri = builder.build();
-			HttpGet httpGet =  new HttpGet(uri);
-			httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
-			httpGet.addHeader("Cache-Control","max-age=0");
-			httpGet.addHeader("Connection","keep-alive");
-			httpGet.addHeader("Host","dynamic.12306.cn");
-			httpGet.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.52 Safari/537.17");
-			response = httpClient.execute(httpGet);
-			HttpEntity entity = response.getEntity();
-			System.out.println(EntityUtils.toString(entity));
-		} catch (Exception e) {
-			e.printStackTrace();
-		}finally{
-			HttpClientUtils.closeQuietly(response);
-		}
-		return false;
 	}
 	
 	/**
@@ -247,9 +238,7 @@ public class Demo {
 			     } finally {
 			    	 HttpClientUtils.closeQuietly(response);
 			         IOUtils.closeQuietly(reader);
-//			         httpClient.getConnectionManager().releaseConnection(conn, validDuration, timeUnit)
 			     }
-//			     httpClient.getConnectionManager().shutdown();
 			 }
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -282,7 +271,13 @@ public class Demo {
 			if(response.getStatusLine().getStatusCode() == 302){
 			}else if(response.getStatusLine().getStatusCode() == 404){
 			}else if(response.getStatusLine().getStatusCode() == 200){
-				searchTicket("2013-02-10");
+				Document document = JsoupUtil.getPageDocument(response.getEntity().getContent());
+				//判断登录状态
+				if(JsoupUtil.validateLogin(document)){
+					searchTicket("2013-02-10");
+				}else{
+					getLoginRand();
+				}
 			}
 			
 		} catch (Exception e) {
@@ -317,7 +312,6 @@ public class Demo {
 			response = httpClient.execute(httpGet);
 			if(response.getStatusLine().getStatusCode() == 200){
 				checkTickeAndOrder(response,date);
-//				printlnResponseData(response);
 			}
 		} catch (Exception e) {
 			httpGet.abort();
@@ -338,18 +332,14 @@ public class Demo {
 		Document document = null;
 		try {
 			document = JsoupUtil.getPageDocument(response.getEntity().getContent());
-			if(document.getElementsContainingText("-10").size() != 0){
-				System.out.println(document.toString());
-				getLoginRand();
-			}
 			if(JsoupUtil.checkHaveTicket(document,7)){
 				System.out.println("有票了，开始订票~~~~~~~~~");
 				String[] params = JsoupUtil.getTicketInfo(document);
 				orderTicket(date,params);
 			}
 			else{
-				System.out.println("休息一秒，继续刷票");
-				Thread.sleep(1000);
+				System.out.println("休息二秒，继续刷票");
+				Thread.sleep(2000);
 				searchTicket(date);
 			}
 		} catch (Exception e) {
@@ -408,9 +398,30 @@ public class Demo {
 				Header locationHeader = response.getFirstHeader("Location");
 				System.out.println(locationHeader.getValue());
 			}else if(response.getStatusLine().getStatusCode() == 200){
-//				printlnResponseData(response);
 				HttpEntity httpEntity = response.getEntity();
-				System.out.println(EntityUtils.toString(httpEntity));
+				Document document = JsoupUtil.getPageDocument(httpEntity.getContent());
+				String ticketNo = null;
+				String seatNum = null;
+				String token = null;
+				Element element = document.getElementById("left_ticket");
+				if(element != null){
+					ticketNo = element.attr("value");
+					System.out.println(ticketNo);
+				}else{
+					System.out.println("~~~~~~~~~~~~~~~~~~~~~可能还有未处理的订单~~~~~~~~~~~~~~~~!");
+					return;
+				}
+				element = document.getElementById("passenger_1_seat");
+				if(element != null){
+					Elements elements = element.getElementsContainingOwnText("硬卧");
+					seatNum = elements.get(0).attr("value");
+					System.out.println(seatNum);
+				}
+				Elements elements = document.getElementsByAttributeValue("name","org.apache.struts.taglib.html.TOKEN");
+				if(elements != null){
+					token = elements.get(0).attr("value");
+				}
+				checkOrderInfo(ticketNo,seatNum,token,params,date);
 			}else{
 				printlnResponseData(response);
 			}
@@ -422,31 +433,90 @@ public class Demo {
 		}
 	}
 	
-	
 	/**
-	 * 获取ticketNo
-	 * @param url
+	 * 检测票
+	 * @param ticketNo
+	 * @param seatNum
+	 * @param token
 	 * @param params
+	 * @param date
+	 * @throws URISyntaxException 
+	 * @throws IOException 
+	 * @throws ClientProtocolException 
 	 */
-	public static void getLeftTicket(String url,String[] params,String date){
-		HttpGet httpGet = null;
+	public static void checkOrderInfo(String ticketNo,String seatNum,String token,String[] params,String date){
 		try {
-			System.out.println();
 			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn").setPath(UrlEnum.GET_SEAT_VALUE.getPath());
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method","checkOrderInfo"));
+			parameters.add(new BasicNameValuePair("org.apache.struts.taglib.html.TOKEN",token));
+			parameters.add(new BasicNameValuePair("leftTicketStr",ticketNo));
+			parameters.add(new BasicNameValuePair("textfield","中文或拼音首字母"));
+			//一个人只有一个checkbox0
+			parameters.add(new BasicNameValuePair("checkbox0","0"));
+			parameters.add(new BasicNameValuePair("checkbox2","2"));
+			parameters.add(new BasicNameValuePair("orderRequest.train_date",date));
+			parameters.add(new BasicNameValuePair("orderRequest.train_no", params[3]));
+			parameters.add(new BasicNameValuePair("orderRequest.station_train_code", params[0]));
+			parameters.add(new BasicNameValuePair("orderRequest.from_station_telecode", params[4]));
+			parameters.add(new BasicNameValuePair("orderRequest.to_station_telecode", params[5]));
+			parameters.add(new BasicNameValuePair("orderRequest.seat_type_code",""));
+			parameters.add(new BasicNameValuePair("orderRequest.ticket_type_order_num",""));
+			
+			parameters.add(new BasicNameValuePair("orderRequest.bed_level_order_num","000000000000000000000000000000"));
+			parameters.add(new BasicNameValuePair("orderRequest.start_time",params[2]));
+			parameters.add(new BasicNameValuePair("orderRequest.end_time",params[6]));
+			parameters.add(new BasicNameValuePair("orderRequest.from_station_name",params[7]));
+			parameters.add(new BasicNameValuePair("orderRequest.to_station_name",params[8]));
+			parameters.add(new BasicNameValuePair("orderRequest.cancel_flag","1"));
+			parameters.add(new BasicNameValuePair("orderRequest.id_mode","Y"));
+			
+			//订票人信息 第一个人
+			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘文波,1,430981198702272830,,Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers","刘文波,1,430981198702272830"));
+			parameters.add(new BasicNameValuePair("passenger_1_seat","3"));
+			parameters.add(new BasicNameValuePair("passenger_1_ticket","1"));
+			parameters.add(new BasicNameValuePair("passenger_1_name","刘文波"));
+			parameters.add(new BasicNameValuePair("passenger_1_cardtype","1"));
+			parameters.add(new BasicNameValuePair("passenger_1_cardno","430981198702272830"));
+			parameters.add(new BasicNameValuePair("passenger_1_mobileno",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+
+			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘丽,1,430181198406030024,18606521059,Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers","刘丽,1,430181198406030024"));
+			parameters.add(new BasicNameValuePair("passenger_2_seat","3"));
+			parameters.add(new BasicNameValuePair("passenger_2_ticket","1"));
+			parameters.add(new BasicNameValuePair("passenger_2_name","刘丽"));
+			parameters.add(new BasicNameValuePair("passenger_2_cardtype","1"));
+			parameters.add(new BasicNameValuePair("passenger_2_cardno","430181198406030024"));
+			parameters.add(new BasicNameValuePair("passenger_2_mobileno","18606521059"));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			parameters.add(new BasicNameValuePair("orderRequest.reserve_flag","A"));
+			parameters.add(new BasicNameValuePair("tFlag","dc"));
+			rangCode = getRandCode(UrlEnum.ORDER_RANGCODE_URL);
+			parameters.add(new BasicNameValuePair("rand",rangCode));
+			builder.setScheme("https").setHost("dynamic.12306.cn").setPath(UrlEnum.GET_ORDER_INFO.getPath());
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
 			URI uri = builder.build();
-			httpGet = getHttpGet(uri,UrlEnum.GET_SEAT_VALUE);
-			response = httpClient.execute(httpGet);
+			HttpPost httpPost = getHttpPost(uri,UrlEnum.GET_ORDER_INFO);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
 			if(response.getStatusLine().getStatusCode() == 200){
-				Document document = JsoupUtil.getPageDocument(response.getEntity().getContent());
-				Element element = document.getElementById("left_ticket");
-				if(element != null){
-					String ticketNo = element.attr("value");
-//					checkTicket(ticketNo,params,date);
+				JSONObject jsonObject = JSON.parseObject(EntityUtils.toString(response.getEntity()));
+				if(jsonObject != null
+						&& "Y".equals(jsonObject.getString("errMsg"))){
+					checkTicket(ticketNo,seatNum,token,params,date);
+				}else{
+					System.out.println(jsonObject.getString("errMsg"));
+					checkOrderInfo(ticketNo,seatNum,token,params,date);
 				}
-				element = document.getElementById("passenger_1_seat");
-				
-				
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -460,33 +530,126 @@ public class Demo {
 	 * @param ticketNo
 	 * @param params
 	 */
-//	public static void checkTicket(String ticketNo,String[] params,String date){
-//		try {
-//			URIBuilder builder = new URIBuilder();
-//			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/confirmPassengerAction.do")
-//			    .setParameter("method","getQueueCount")
-//			    .setParameter("train_date",date)
-//			    .setParameter("train_no",params[3])
-//			    .setParameter("station",params[0])
-//			    .setParameter("seat","O")
-//			    .setParameter("from", params[4])
-//			    .setParameter("to", params[5])
-//			    .setParameter("ticket",ticketNo);
-//			URI uri = builder.build();
-//			HttpGet httpGet = getHttpGet(uri,"https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init");
-//			HttpResponse response = httpClient.execute(httpGet);
-//			if(response.getStatusLine().getStatusCode() == 200){
-//				printlnResponseData(response);
-////				BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(response.getEntity().getContent(),"UTF-8"));
-////				String ticketInfo = bufferedReader.readLine();
-////				System.out.println(ticketInfo);
-//			}
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}finally{
-//			
-//		}
-//	}
+	public static void checkTicket(String ticketNo,String seatNum,String token,String[] params,String date){
+		try {
+			HttpGet httpGet = new HttpGet("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=getQueueCount&train_date=2013-02-10&train_no=6a000K907507&station=K9075&seat=3&from=CSQ&to=BJQ&ticket=1014203020404410002410142001683028200072");
+			httpGet.addHeader("Accept","application/json, text/javascript, */*");
+			httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
+			httpGet.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+			httpGet.addHeader("Connection","keep-alive");
+			httpGet.addHeader("Content-Type","application/x-www-form-urlencoded");
+			httpGet.addHeader("X-Requested-With","XMLHttpRequest");
+			httpGet.addHeader("Host","dynamic.12306.cn");
+			httpGet.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17");
+			response = httpClient.execute(httpGet);
+			if(response.getStatusLine().getStatusCode() == 200){
+				System.out.println(EntityUtils.toString(response.getEntity()));
+				orderTicketToQueue(ticketNo,seatNum,token,params,date);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}finally{
+			HttpClientUtils.closeQuietly(response);
+		}
+	}
+	
+	public static void orderTicketToQueue(String ticketNo,String seatNum,String token,String[] params,String date){
+		try {
+			URIBuilder builder = new URIBuilder();
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method","confirmSingleForQueue"));
+			parameters.add(new BasicNameValuePair("org.apache.struts.taglib.html.TOKEN",token));
+			parameters.add(new BasicNameValuePair("leftTicketStr",ticketNo));
+			parameters.add(new BasicNameValuePair("textfield","中文或拼音首字母"));
+			//一个人只有一个checkbox0
+			parameters.add(new BasicNameValuePair("checkbox0","0"));
+			parameters.add(new BasicNameValuePair("checkbox2","2"));
+			parameters.add(new BasicNameValuePair("orderRequest.train_date",date));
+			parameters.add(new BasicNameValuePair("orderRequest.train_no", params[3]));
+			parameters.add(new BasicNameValuePair("orderRequest.station_train_code", params[0]));
+			parameters.add(new BasicNameValuePair("orderRequest.from_station_telecode", params[4]));
+			parameters.add(new BasicNameValuePair("orderRequest.to_station_telecode", params[5]));
+			parameters.add(new BasicNameValuePair("orderRequest.seat_type_code",""));
+			parameters.add(new BasicNameValuePair("orderRequest.ticket_type_order_num",""));
+			
+			parameters.add(new BasicNameValuePair("orderRequest.bed_level_order_num","000000000000000000000000000000"));
+			parameters.add(new BasicNameValuePair("orderRequest.start_time",params[2]));
+			parameters.add(new BasicNameValuePair("orderRequest.end_time",params[6]));
+			parameters.add(new BasicNameValuePair("orderRequest.from_station_name",params[7]));
+			parameters.add(new BasicNameValuePair("orderRequest.to_station_name",params[8]));
+			parameters.add(new BasicNameValuePair("orderRequest.cancel_flag","1"));
+			parameters.add(new BasicNameValuePair("orderRequest.id_mode","Y"));
+			
+			//订票人信息 第一个人
+			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘文波,1,430981198702272830,,Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers","刘文波,1,430981198702272830"));
+			parameters.add(new BasicNameValuePair("passenger_1_seat","3"));
+			parameters.add(new BasicNameValuePair("passenger_1_ticket","1"));
+			parameters.add(new BasicNameValuePair("passenger_1_name","刘文波"));
+			parameters.add(new BasicNameValuePair("passenger_1_cardtype","1"));
+			parameters.add(new BasicNameValuePair("passenger_1_cardno","430981198702272830"));
+			parameters.add(new BasicNameValuePair("passenger_1_mobileno",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+
+			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘丽,1,430181198406030024,18606521059,Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers","刘丽,1,430181198406030024"));
+			parameters.add(new BasicNameValuePair("passenger_2_seat","3"));
+			parameters.add(new BasicNameValuePair("passenger_2_ticket","1"));
+			parameters.add(new BasicNameValuePair("passenger_2_name","刘丽"));
+			parameters.add(new BasicNameValuePair("passenger_2_cardtype","1"));
+			parameters.add(new BasicNameValuePair("passenger_2_cardno","430181198406030024"));
+			parameters.add(new BasicNameValuePair("passenger_2_mobileno","18606521059"));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
+			parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			parameters.add(new BasicNameValuePair("orderRequest.reserve_flag","A"));
+			parameters.add(new BasicNameValuePair("tFlag","dc"));
+			parameters.add(new BasicNameValuePair("randCode",rangCode));
+			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/confirmPassengerAction.do");
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
+			URI uri = builder.build();
+			HttpPost httpPost = new HttpPost(uri);
+			httpPost.setEntity(uef);
+			httpPost.addHeader("Accept","application/json, text/javascript, */*");
+			httpPost.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
+			httpPost.addHeader("Connection","keep-alive");
+			httpPost.addHeader("Content-Type","application/x-www-form-urlencoded");
+			httpPost.addHeader("Origin","https://dynamic.12306.cn");
+			httpPost.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+			httpPost.addHeader("Host","dynamic.12306.cn");
+			httpPost.addHeader("Referer","https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=init");
+			httpPost.addHeader("X-Requested-With","XMLHttpRequest");
+			httpPost.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17");
+			response = httpClient.execute(httpPost);
+			if(response.getStatusLine().getStatusCode() == 200){
+				HttpEntity entity = response.getEntity();
+				JSONObject jsonObject = JSONObject.parseObject(EntityUtils.toString(entity));
+				System.out.println(jsonObject.toJSONString());
+				String errorMessage = jsonObject.getString("errMsg");
+				if("Y".equals(errorMessage)){
+					System.out.println("订票成功了，赶紧付款吧!");
+				}else if(StringUtils.contains(errorMessage,"验证码")){
+					checkOrderInfo(ticketNo,seatNum,token,params,date);
+				}else if(StringUtils.contains(errorMessage,"排队人数现已超过余票数")){
+					searchTicket(date);
+				}else if(StringUtils.contains(errorMessage,"非法的订票请求")){
+					searchTicket(date);
+				}else{
+					searchTicket(date);
+				}
+			}
+		} catch (Exception e) {
+		   e.printStackTrace();
+		   
+		}finally{
+			HttpClientUtils.closeQuietly(response);
+		}
+	}
 	
 	public static void printlnResponseData(HttpResponse response){
 		System.out.println(response.getStatusLine());
@@ -542,8 +705,8 @@ public class Demo {
 		if(StringUtils.isNotEmpty(urlEnum.getAccept())){
 			httpGet.addHeader("Accept",urlEnum.getAccept());
 		}
-		httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
 		httpGet.addHeader("Cache-Control","max-age=0");
+		httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
 		httpGet.addHeader("Connection","keep-alive");
 		httpGet.addHeader("Host","dynamic.12306.cn");
 		httpGet.addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_2) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.52 Safari/537.17");
@@ -567,12 +730,8 @@ public class Demo {
 	 * @return
 	 * @throws URISyntaxException 
 	 */
-	public static String getRandCode(UrlEnum urlEnum) throws URISyntaxException{
-//		URIBuilder builder = new URIBuilder();
-//		builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/passCodeAction.do")
-//		.setParameter("rand","sjrand");
-//		URI uri = builder.build();
-		HttpGet httpGet = new HttpGet("https://dynamic.12306.cn/otsweb/passCodeAction.do?rand=sjrand");
+	public static String getRandCode(UrlEnum urlEnum){
+		HttpGet httpGet = new HttpGet("https://dynamic.12306.cn/otsweb/"+urlEnum.getPath());
 		InputStream inputStream = null;
 		OutputStream outputStream = null;
 		try {
