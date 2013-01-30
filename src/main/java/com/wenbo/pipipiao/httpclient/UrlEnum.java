@@ -4,7 +4,7 @@ public enum UrlEnum {
 	//首页
 	INDEX_URL("/otsweb","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","","",""),
 	//登录初始页面url
-	LOGIN_INIT_URL("/otsweb/loginAction.do?method=loginAysnSuggest","","","",""),
+	LOGIN_INIT_URL("/otsweb/loginAction.do","","","",""),
 	//登录验证码
 	LOGIN_RANGCODE_URL("/passCodeAction.do?rand=sjrand","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","","",""),
 	//登录url

@@ -207,7 +207,8 @@ public class Demo {
 		            return isRedirect;
 		        }
 		});
-		getLoginRand();
+		new RobTicket(configInfo, userInfo, userInfoMap, httpClient).getLoginRand();
+//		getLoginRand();
 //		test();
 	}
 	
