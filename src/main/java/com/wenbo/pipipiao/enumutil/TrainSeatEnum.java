@@ -14,8 +14,9 @@ public enum TrainSeatEnum {
 	HIGHCUSHIONEDBERTHS(5,"高级软卧"),
 	CUSHIONEDBERTHS(6,"软卧"),
 	HARDSLEEPER(7,"硬卧"),
-	HARDSEAT(8,"硬座"),
-	NOSEAT(9,"无座");
+	SOFTSLEEPER(8,"软座"),
+	HARDSEAT(9,"硬座"),
+	NOSEAT(10,"无座");
 	
 	private int code;
 	

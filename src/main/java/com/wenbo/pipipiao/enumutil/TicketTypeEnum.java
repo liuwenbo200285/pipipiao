@@ -1,4 +1,4 @@
-package com.wenbo.pipipiao.httpclient;
+package com.wenbo.pipipiao.enumutil;
 
 /**
  * 坐席枚举

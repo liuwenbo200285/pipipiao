@@ -33,12 +33,16 @@ import org.apache.http.util.EntityUtils;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
+import com.wenbo.pipipiao.enumutil.TrainSeatEnum;
+import com.wenbo.pipipiao.enumutil.UrlEnum;
 import com.wenbo.pipipiao.util.HttpClientUtil;
 
 /**
@@ -47,6 +51,8 @@ import com.wenbo.pipipiao.util.HttpClientUtil;
  *
  */
 public class RobTicket {
+	
+	private static final Logger logger = LoggerFactory.getLogger(RobTicket.class);
 	
 	private ConfigInfo configInfo;
 	
@@ -86,12 +92,8 @@ public class RobTicket {
 			         String str = reader.readLine();
 			         JSONObject object = JSONObject.parseObject(str);
 			         login(object.getString("loginRand"),object.getString("randError"));
-			     } catch (IOException ex) {
-			         throw ex;
-
-			     } catch (RuntimeException ex) {
-			         httpget.abort();
-			         throw ex;
+			     } catch (Exception e) {
+                       logger.error("getLoginRand error!",e);
 			     } finally {
 			    	 HttpClientUtils.closeQuietly(response);
 			         IOUtils.closeQuietly(reader);
@@ -133,14 +135,14 @@ public class RobTicket {
 					if(userInfoMap == null){
 						getOrderPerson();
 					}
-					searchTicket("2013-02-10");
+					searchTicket(configInfo.getOrderDate());
 				}else{
 					getLoginRand();
 				}
 			}
 			
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("login error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -164,7 +166,7 @@ public class RobTicket {
 				JSONObject jsonObject = JSON.parseObject(info);
 				List<UserInfo> userInfos =  JSONArray.parseArray(jsonObject.getString("passengerJson"),UserInfo.class);
 				if(userInfos == null || userInfos.size() == 0){
-					System.out.println("此账号没有添加联系人!");
+					logger.error("此账号没有添加联系人!");
 					return;
 				}
 				userInfoMap = new HashMap<String, UserInfo>();
@@ -178,7 +180,7 @@ public class RobTicket {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("getOrderPerson error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -196,11 +198,11 @@ public class RobTicket {
 			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/querySingleAction.do")
 			    .setParameter("method","queryLeftTicket")
 			    .setParameter("orderRequest.train_date",date)
-			    .setParameter("orderRequest.from_station_telecode", "CWQ")
-			    .setParameter("orderRequest.to_station_telecode", "SZQ")
-			    .setParameter("orderRequest.train_no", "6a000K907507")
+			    .setParameter("orderRequest.from_station_telecode",configInfo.getFromStation())
+			    .setParameter("orderRequest.to_station_telecode",configInfo.getToStation())
+			    .setParameter("orderRequest.train_no", configInfo.getTrainNo())
 			    .setParameter("trainPassType","QB")
-			    .setParameter("trainClass", "K#")
+			    .setParameter("trainClass",configInfo.getTrainClass())
 			    .setParameter("includeStudent","00")
 			    .setParameter("seatTypeAndNum","")
 			    .setParameter("orderRequest.start_time_str","00:00--24:00");
@@ -211,7 +213,7 @@ public class RobTicket {
 				checkTickeAndOrder(response,date);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("searchTicket error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -227,18 +229,18 @@ public class RobTicket {
 		Document document = null;
 		try {
 			document = JsoupUtil.getPageDocument(response.getEntity().getContent());
-			if(JsoupUtil.checkHaveTicket(document,7)){
-				System.out.println("有票了，开始订票~~~~~~~~~");
+			if(JsoupUtil.checkHaveTicket(document,configInfo.getOrderSeat())){
+				logger.info("有票了，开始订票~~~~~~~~~");
 				String[] params = JsoupUtil.getTicketInfo(document);
 				orderTicket(date,params);
 			}
 			else{
-				System.out.println("休息二秒，继续刷票");
+				logger.info("休息二秒，继续刷票");
 				Thread.sleep(2000);
 				searchTicket(date);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("checkTickeAndOrder error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -292,7 +294,7 @@ public class RobTicket {
 			response = httpClient.execute(httpPost);
 			if(response.getStatusLine().getStatusCode() == 302){
 				Header locationHeader = response.getFirstHeader("Location");
-				System.out.println(locationHeader.getValue());
+				logger.info(locationHeader.getValue());
 			}else if(response.getStatusLine().getStatusCode() == 200){
 				HttpEntity httpEntity = response.getEntity();
 				Document document = JsoupUtil.getPageDocument(httpEntity.getContent());
@@ -302,16 +304,21 @@ public class RobTicket {
 				Element element = document.getElementById("left_ticket");
 				if(element != null){
 					ticketNo = element.attr("value");
-					System.out.println(ticketNo);
+					logger.info(ticketNo);
 				}else{
-					System.out.println("~~~~~~~~~~~~~~~~~~~~~可能还有未处理的订单~~~~~~~~~~~~~~~~!");
+					logger.info("~~~~~~~~~~~~~~~~~~~~~可能还有未处理的订单~~~~~~~~~~~~~~~~!");
 					return;
 				}
 				element = document.getElementById("passenger_1_seat");
 				if(element != null){
-					Elements elements = element.getElementsContainingOwnText("硬卧");
+					TrainSeatEnum trainSeatEnum = HttpClientUtil.getSeatEnum(configInfo.getOrderSeat());
+					if(trainSeatEnum == null){
+						logger.warn("预订坐席填写不正确，请重新填写!");
+						return;
+					}
+					Elements elements = element.getElementsContainingOwnText(trainSeatEnum.getName());
 					seatNum = elements.get(0).attr("value");
-					System.out.println(seatNum);
+					logger.info(seatNum);
 				}
 				Elements elements = document.getElementsByAttributeValue("name","org.apache.struts.taglib.html.TOKEN");
 				if(elements != null){
@@ -319,10 +326,10 @@ public class RobTicket {
 				}
 				checkOrderInfo(ticketNo,seatNum,token,params,date);
 			}else{
-				System.out.println(EntityUtils.toString(response.getEntity()));
+				logger.warn(EntityUtils.toString(response.getEntity()));
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("orderTicket error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 			IOUtils.closeQuietly(outputStream);
@@ -368,7 +375,16 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("orderRequest.cancel_flag","1"));
 			parameters.add(new BasicNameValuePair("orderRequest.id_mode","Y"));
 			
-			//订票人信息 第一个人
+			//处理订票信息
+			if(!StringUtils.contains(configInfo.getOrderPerson(),",")){
+				logger.warn("订票人格式填写不正确！");
+				return;
+			}
+			String[] orders = StringUtils.split(configInfo.getOrderPerson(),",");
+			if(orders.length == 0){
+				logger.warn("订票人格式填写不正确！");
+				return;
+			}
 			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘文波,1,430981198702272830,,Y"));
 			parameters.add(new BasicNameValuePair("oldPassengers","刘文波,1,430981198702272830"));
 			parameters.add(new BasicNameValuePair("passenger_1_seat","3"));
@@ -411,17 +427,17 @@ public class RobTicket {
 						&& "Y".equals(jsonObject.getString("errMsg"))){
 					String msg = jsonObject.getString("msg");
 					if(StringUtils.isNotEmpty(msg)){
-						System.out.println(msg);
+						logger.info(msg);
 					}else{
 						checkTicket(ticketNo,seatNum,token,params,date,rangCode);
 					}
 				}else{
-					System.out.println(jsonObject.getString("errMsg"));
+					logger.info(jsonObject.getString("errMsg"));
 					checkOrderInfo(ticketNo,seatNum,token,params,date);
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("checkOrderInfo error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -449,7 +465,7 @@ public class RobTicket {
 				orderTicketToQueue(ticketNo,seatNum,token,params,date,rangCode);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.info("checkTicket error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -532,10 +548,10 @@ public class RobTicket {
 			if(response.getStatusLine().getStatusCode() == 200){
 				HttpEntity entity = response.getEntity();
 				JSONObject jsonObject = JSONObject.parseObject(EntityUtils.toString(entity));
-				System.out.println(jsonObject.toJSONString());
+				logger.info(jsonObject.toJSONString());
 				String errorMessage = jsonObject.getString("errMsg");
-				if("Y".equals(errorMessage)){
-					System.out.println("订票成功了，赶紧付款吧!");
+				if("Y".equals(errorMessage) || StringUtils.isEmpty(errorMessage)){
+					logger.info("订票成功了，赶紧付款吧!");
 				}else if(StringUtils.contains(errorMessage,"验证码")){
 					checkOrderInfo(ticketNo,seatNum,token,params,date);
 				}else if(StringUtils.contains(errorMessage,"排队人数现已超过余票数")){
@@ -547,8 +563,7 @@ public class RobTicket {
 				}
 			}
 		} catch (Exception e) {
-		   e.printStackTrace();
-		   
+			logger.error("orderTicketToQueue error!",e);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}
@@ -582,7 +597,7 @@ public class RobTicket {
 			HttpClientUtils.closeQuietly(response);
 			IOUtils.closeQuietly(outputStream);
 		}
-		System.out.print("请输入验证码:");
+		logger.info("请输入验证码:");
 		Scanner scanner = new Scanner(System.in);
 		String randCode = scanner.nextLine();
 		if("N".equals(randCode.toUpperCase())){

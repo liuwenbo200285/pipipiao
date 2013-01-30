@@ -67,6 +67,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
+import com.wenbo.pipipiao.enumutil.UrlEnum;
 import com.wenbo.pipipiao.util.ConfigUtil;
 
 public class Demo {
@@ -207,7 +208,9 @@ public class Demo {
 		            return isRedirect;
 		        }
 		});
+		logger.info("开始执行程序~~~~~~~~~~~~");
 		new RobTicket(configInfo, userInfo, userInfoMap, httpClient).getLoginRand();
+		logger.info("程序执行完毕~~~~~~~~~~~~");
 //		getLoginRand();
 //		test();
 	}
@@ -228,6 +231,7 @@ public class Demo {
 			                 new InputStreamReader(instream));
 			         String str = reader.readLine();
 			         JSONObject object = JSONObject.parseObject(str);
+			         logger.info(object.toJSONString());
 			         login(object.getString("loginRand"),object.getString("randError"));
 			     } catch (IOException ex) {
 			         throw ex;
@@ -246,11 +250,9 @@ public class Demo {
 	}
 	
 	public static void login(String loginRand,String randError) throws ClientProtocolException, IOException{
-		System.out.println("loginRand:"+loginRand+",randError:"+randError);
 		//获取验证码
 		try {
 			String randCode = getRandCode(UrlEnum.LOGIN_RANGCODE_URL);
-//			URIBuilder builder = new URIBuilder();
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("method","login"));
 			parameters.add(new BasicNameValuePair("loginRand",loginRand));

@@ -22,7 +22,7 @@ public class ConfigInfo {
 	
 	private String orderPerson;
 	
-	private String orderSeat;
+	private Integer orderSeat;
 
 	public String getUsername() {
 		return username;
@@ -88,11 +88,11 @@ public class ConfigInfo {
 		this.orderPerson = orderPerson;
 	}
 
-	public String getOrderSeat() {
+	public Integer getOrderSeat() {
 		return orderSeat;
 	}
 
-	public void setOrderSeat(String orderSeat) {
+	public void setOrderSeat(Integer orderSeat) {
 		this.orderSeat = orderSeat;
 	}
 }

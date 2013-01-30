@@ -6,7 +6,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 
-import com.wenbo.pipipiao.httpclient.UrlEnum;
+import com.wenbo.pipipiao.enumutil.TrainSeatEnum;
+import com.wenbo.pipipiao.enumutil.UrlEnum;
 
 /**
  * httpClient工具类
@@ -59,5 +60,20 @@ public class HttpClientUtil {
 		}
 		httpGet.addHeader("Referer",REFER);
 		return httpGet;
+	}
+	
+	/**
+	 * 获取坐席枚举
+	 * @param trainSeat
+	 * @return
+	 */
+	public static TrainSeatEnum getSeatEnum(Integer trainSeat){
+		TrainSeatEnum[] trainSeatEnums = TrainSeatEnum.values();
+		for(TrainSeatEnum trainSeatEnum:trainSeatEnums){
+			if(trainSeatEnum.getCode() == trainSeat){
+				return trainSeatEnum;
+			}
+		}
+		return null;
 	}
 }

@@ -12,8 +12,12 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JsoupUtil {
+	
+	private static final Logger logger = LoggerFactory.getLogger(JsoupUtil.class);
 
 	/**
 	 * @param args
@@ -91,7 +95,7 @@ public class JsoupUtil {
 			    				n++;
 			    			}else if(StringUtils.isNumeric(nn)){
 			    				if(type == n){
-			    					System.out.println("有票:"+nn+"张!");
+			    					logger.info("有票:"+nn+"张!");
 			    					return true;
 			    				}
 			    				n++;
@@ -100,19 +104,19 @@ public class JsoupUtil {
 			    	}
 			    }else if("darkgray".equals(node.attr("color"))){
 			    	if(n == type){
-			    		System.out.println("没有票了!");
+			    		logger.info("没有票了!");
 			    		return false;
 			    	}
 			    	n++;
 			    }else if("#008800".equals(node.attr("color"))){
 			    	if(n == type){
-			    		System.out.println("有大量的票!");
+			    		logger.info("有大量的票!");
 			    		return true;
 			    	}
 			    	n++;
 			    }else if(node.hasAttr("onclick")){
 					String info = node.childNode(0).toString();
-					System.out.println(info);
+					logger.info(info);
 					return false;
 //					int bengin = StringUtils.indexOf(info,"点起售");
 //					if(bengin != -1){
@@ -144,11 +148,11 @@ public class JsoupUtil {
 		Element element = document.getElementById("randErr");
 		if(element != null){
 			String errorString = element.child(1).childNode(0).toString();
-			System.out.print("登录失败!原因："+errorString);
+			logger.info("登录失败!原因："+errorString);
 		}
 		element = document.getElementById("bookTicket");
 		if(element != null){
-			System.out.println("登录成功!");
+			logger.info("登录成功!");
 			return true;
 		}
 		Elements elements = document.getElementsByAttributeValue("language","javascript");
@@ -156,7 +160,7 @@ public class JsoupUtil {
 			String errorMessage = elements.get(0).childNode(0).toString();
 			int i = errorMessage.indexOf("\"");
 			int n = errorMessage.indexOf(";");
-			System.out.println("登录失败!原因："+StringUtils.substring(errorMessage,i+1,n-1));
+			logger.info("登录失败!原因："+StringUtils.substring(errorMessage,i+1,n-1));
 		}
 		return false;
 	}
