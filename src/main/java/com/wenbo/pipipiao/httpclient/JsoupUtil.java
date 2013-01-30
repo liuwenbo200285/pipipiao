@@ -44,7 +44,7 @@ public class JsoupUtil {
 		try {
 			doc = Jsoup.parse(inputStream,"UTF-8","https://dynamic.12306.cn/");
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("getPageDocument error!",e);
 		}finally{
 			IOUtils.closeQuietly(inputStream);
 		}
@@ -58,14 +58,11 @@ public class JsoupUtil {
 	 */
 	public static String [] getTicketInfo(Document document){
 		String str = document.getElementsByTag("a").attr("onclick");
-		System.out.println(str);
 		int begin = StringUtils.indexOf(str,"'");
 		int end = StringUtils.lastIndexOf(str,"'");
 		str = StringUtils.substring(str, begin+1, end);
+		logger.info(str);
 		String [] params = StringUtils.split(str,"#");
-		for(String para:params){
-			System.out.println(para);
-		}
 		return params;
 	}
 	
@@ -135,7 +132,7 @@ public class JsoupUtil {
 			    
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.error("checkHaveTicket error!",e);
 		}
 		return flag;
 	}
