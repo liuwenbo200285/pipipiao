@@ -21,6 +21,8 @@ public class ConfigInfo {
 	private String trainClass;
 	
 	private String orderPerson;
+	
+	private String orderSeat;
 
 	public String getUsername() {
 		return username;
@@ -84,5 +86,13 @@ public class ConfigInfo {
 
 	public void setOrderPerson(String orderPerson) {
 		this.orderPerson = orderPerson;
+	}
+
+	public String getOrderSeat() {
+		return orderSeat;
+	}
+
+	public void setOrderSeat(String orderSeat) {
+		this.orderSeat = orderSeat;
 	}
 }
