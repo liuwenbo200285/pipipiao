@@ -306,7 +306,7 @@ public class RobTicket {
 					ticketNo = element.attr("value");
 					logger.info(ticketNo);
 				}else{
-					logger.info("~~~~~~~~~~~~~~~~~~~~~可能还有未处理的订单~~~~~~~~~~~~~~~~!");
+					logger.info("~~~~~~~~~~~~~~~~~~~~~可能还有未处理的订单或者系统维护等其它异常~~~~~~~~~~~~~~~~!");
 					return;
 				}
 				element = document.getElementById("passenger_1_seat");
