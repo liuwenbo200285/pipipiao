@@ -1,4 +1,4 @@
-package com.wenbo.piao.test;
+package com.wenbo.pipipiao.rangcode;
 
 import com.sun.image.codec.jpeg.JPEGCodec;
 import com.sun.image.codec.jpeg.JPEGEncodeParam;

@@ -1,4 +1,4 @@
-package com.wenbo.httpclient;
+package com.wenbo.pipipiao.httpclient;
 
 public enum UrlEnum {
 	//首页

@@ -1,4 +1,4 @@
-package com.wenbo.httpclient;
+package com.wenbo.pipipiao.httpclient;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;

@@ -1,4 +1,4 @@
-package com.wenbo.httpclient;
+package com.wenbo.pipipiao.httpclient;
 
 import java.io.File;
 import java.io.FileInputStream;
