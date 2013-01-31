@@ -237,7 +237,8 @@ public class RobTicket {
 			message = StringUtils.remove(message,"&nbsp;");
 			if(StringUtils.isEmpty(message)){
 				logger.warn("车次配置错误，没有查询到车次！");
-				return;
+				Thread.sleep(20000);
+				searchTicket(date);
 			}
 			int m = 1;
 			int n = 0;
@@ -262,7 +263,7 @@ public class RobTicket {
 			}
 			if(document == null){
 				logger.info("没有余票,休息一秒，继续刷票");
-				Thread.sleep(1000);
+				Thread.sleep(3000);
 				searchTicket(date);
 			}else{
 				logger.info("有票了，开始订票~~~~~~~~~");
@@ -411,6 +412,10 @@ public class RobTicket {
 				logger.warn("订票人格式填写不正确！");
 				return;
 			}
+			if(orders.length > 5){
+				logger.warn("一个账号最多只能预定5张火车票！");
+				return;
+			}
 			int n = 1;
 			for(int i = 0;i < orders.length;i++){
 				userInfo = userInfoMap.get(orders[i]);
@@ -430,14 +435,6 @@ public class RobTicket {
 				parameters.add(new BasicNameValuePair("passenger_"+n+"_mobileno",""));
 				parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			}
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			parameters.add(new BasicNameValuePair("orderRequest.reserve_flag","A"));
 			parameters.add(new BasicNameValuePair("tFlag","dc"));
 			String rangCode = getRandCode(UrlEnum.ORDER_RANGCODE_URL);

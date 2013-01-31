@@ -1,9 +1,5 @@
 package com.wenbo.pipipiao.httpclient;
 
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.params.BasicHttpParams;
@@ -23,11 +19,9 @@ public static DefaultHttpClient getHttpClient(){
 	PoolingClientConnectionManager  cm = new PoolingClientConnectionManager();
 	cm.setMaxTotal(200);
 	cm.setDefaultMaxPerRoute(20);
-	
 	HttpParams params = new BasicHttpParams();
 	params.setParameter(CoreConnectionPNames.CONNECTION_TIMEOUT,TIMEOUT);
 	params.setParameter(CoreConnectionPNames.SO_TIMEOUT, SO_TIMEOUT);
-	
 	DefaultHttpClient client = new DefaultHttpClient(cm,params);
 	return client;
 }
