@@ -1,4 +1,4 @@
-package com.wenbo.pipipiao.httpclient;
+package com.wenbo.pipipiao.util;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -76,6 +76,8 @@ public class JsoupUtil {
 			if(document == null){
 				throw new IllegalAccessException("document is null");
 			}
+			Elements elements = document.getElementsByTag("span");
+			String trainNo = elements.get(0).childNode(0).toString();
 			List<Node> nodes = document.childNode(0).childNodes().get(1).childNodes();
 			Node node = null;
 			int n = 1;
@@ -92,7 +94,7 @@ public class JsoupUtil {
 			    				n++;
 			    			}else if(StringUtils.isNumeric(nn)){
 			    				if(type == n){
-			    					logger.info("有票:"+nn+"张!");
+			    					logger.info(trainNo+"有票:"+nn+"张!");
 			    					return true;
 			    				}
 			    				n++;
@@ -101,19 +103,19 @@ public class JsoupUtil {
 			    	}
 			    }else if("darkgray".equals(node.attr("color"))){
 			    	if(n == type){
-			    		logger.info("没有票了!");
+			    		logger.info(trainNo+"没有票!");
 			    		return false;
 			    	}
 			    	n++;
 			    }else if("#008800".equals(node.attr("color"))){
 			    	if(n == type){
-			    		logger.info("有大量的票!");
+			    		logger.info(trainNo+"有大量的票!");
 			    		return true;
 			    	}
 			    	n++;
 			    }else if(node.hasAttr("onclick")){
 					String info = node.childNode(0).toString();
-					logger.info(info);
+					logger.info(trainNo+info);
 					return false;
 //					int bengin = StringUtils.indexOf(info,"点起售");
 //					if(bengin != -1){

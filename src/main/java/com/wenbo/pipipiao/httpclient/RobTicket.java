@@ -30,6 +30,7 @@ import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -44,6 +45,7 @@ import com.wenbo.pipipiao.domain.UserInfo;
 import com.wenbo.pipipiao.enumutil.TrainSeatEnum;
 import com.wenbo.pipipiao.enumutil.UrlEnum;
 import com.wenbo.pipipiao.util.HttpClientUtil;
+import com.wenbo.pipipiao.util.JsoupUtil;
 
 /**
  * 抢火车票主程序
@@ -199,9 +201,13 @@ public class RobTicket {
 			    .setParameter("method","queryLeftTicket")
 			    .setParameter("orderRequest.train_date",date)
 			    .setParameter("orderRequest.from_station_telecode",configInfo.getFromStation())
-			    .setParameter("orderRequest.to_station_telecode",configInfo.getToStation())
-			    .setParameter("orderRequest.train_no", configInfo.getTrainNo())
-			    .setParameter("trainPassType","QB")
+			    .setParameter("orderRequest.to_station_telecode",configInfo.getToStation());
+			if(StringUtils.isNotEmpty(configInfo.getTrainNo())){
+				builder.setParameter("orderRequest.train_no", configInfo.getTrainNo());
+			}else{
+				builder.setParameter("orderRequest.train_no","");
+			}
+			builder.setParameter("trainPassType","QB")
 			    .setParameter("trainClass",configInfo.getTrainClass())
 			    .setParameter("includeStudent","00")
 			    .setParameter("seatTypeAndNum","")
@@ -210,7 +216,7 @@ public class RobTicket {
 			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,UrlEnum.SEARCH_TICKET);
 			response = httpClient.execute(httpGet);
 			if(response.getStatusLine().getStatusCode() == 200){
-				checkTickeAndOrder(response,date);
+				checkTickeAndOrder(EntityUtils.toString(response.getEntity()),date);
 			}
 		} catch (Exception e) {
 			logger.error("searchTicket error!",e);
@@ -225,24 +231,46 @@ public class RobTicket {
 	 * @throws IOException 
 	 * @throws IllegalStateException 
 	 */
-	public void checkTickeAndOrder(HttpResponse response,String date) throws IllegalStateException, IOException{
+	public void checkTickeAndOrder(String message,String date) throws IllegalStateException, IOException{
 		Document document = null;
 		try {
-			document = JsoupUtil.getPageDocument(response.getEntity().getContent());
-			if(JsoupUtil.checkHaveTicket(document,configInfo.getOrderSeat())){
+			message = StringUtils.remove(message,"&nbsp;");
+			if(StringUtils.isEmpty(message)){
+				logger.warn("车次配置错误，没有查询到车次！");
+				return;
+			}
+			int m = 1;
+			int n = 0;
+			int lastIndex = 0;
+			boolean isLast = false;
+			String trainInfo = null;
+			while((n = StringUtils.indexOf(message,m+",<span")) != -1
+					|| !isLast){
+				if(n == -1){
+					trainInfo = StringUtils.substring(message, lastIndex,message.length());
+					isLast = true;
+				}else{
+					trainInfo = StringUtils.substring(message, lastIndex,n);
+				}
+				document = Jsoup.parse(trainInfo);
+				if(JsoupUtil.checkHaveTicket(document,configInfo.getOrderSeat())){
+					break;
+				}
+				document = null;
+				m++;
+				lastIndex = n;
+			}
+			if(document == null){
+				logger.info("没有余票,休息一秒，继续刷票");
+				Thread.sleep(1000);
+				searchTicket(date);
+			}else{
 				logger.info("有票了，开始订票~~~~~~~~~");
 				String[] params = JsoupUtil.getTicketInfo(document);
 				orderTicket(date,params);
 			}
-			else{
-				logger.info("休息二秒，继续刷票");
-				Thread.sleep(2000);
-				searchTicket(date);
-			}
 		} catch (Exception e) {
 			logger.error("checkTickeAndOrder error!",e);
-		}finally{
-			HttpClientUtils.closeQuietly(response);
 		}
 	}
 	
@@ -280,7 +308,7 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("to_station_no", params[10]));
 			parameters.add(new BasicNameValuePair("to_station_telecode", params[5]));
 			parameters.add(new BasicNameValuePair("to_station_telecode_name",params[8]));
-			parameters.add(new BasicNameValuePair("train_class_arr","D#"));
+			parameters.add(new BasicNameValuePair("train_class_arr",configInfo.getTrainClass()));
 			parameters.add(new BasicNameValuePair("train_date", date));
 			parameters.add(new BasicNameValuePair("train_pass_type","QB"));
 			parameters.add(new BasicNameValuePair("train_start_time", params[2]));
@@ -357,8 +385,6 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("leftTicketStr",ticketNo));
 			parameters.add(new BasicNameValuePair("textfield","中文或拼音首字母"));
 			//一个人只有一个checkbox0
-			parameters.add(new BasicNameValuePair("checkbox0","0"));
-			parameters.add(new BasicNameValuePair("checkbox2","2"));
 			parameters.add(new BasicNameValuePair("orderRequest.train_date",date));
 			parameters.add(new BasicNameValuePair("orderRequest.train_no", params[3]));
 			parameters.add(new BasicNameValuePair("orderRequest.station_train_code", params[0]));
@@ -385,26 +411,27 @@ public class RobTicket {
 				logger.warn("订票人格式填写不正确！");
 				return;
 			}
-			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘文波,1,430981198702272830,,Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers","刘文波,1,430981198702272830"));
-			parameters.add(new BasicNameValuePair("passenger_1_seat","3"));
-			parameters.add(new BasicNameValuePair("passenger_1_ticket","1"));
-			parameters.add(new BasicNameValuePair("passenger_1_name","刘文波"));
-			parameters.add(new BasicNameValuePair("passenger_1_cardtype","1"));
-			parameters.add(new BasicNameValuePair("passenger_1_cardno","430981198702272830"));
-			parameters.add(new BasicNameValuePair("passenger_1_mobileno",""));
+			int n = 1;
+			for(int i = 0;i < orders.length;i++){
+				userInfo = userInfoMap.get(orders[i]);
+				if(userInfo == null){
+					logger.warn("this name is not have!name:"+orders[i]);
+					continue;
+				}
+				parameters.add(new BasicNameValuePair("checkbox"+userInfo.getIndex(),""+userInfo.getIndex()));
+				parameters.add(new BasicNameValuePair("passengerTickets",seatNum+",0,1,"+userInfo.getPassenger_name()
+						+",1,"+userInfo.getPassenger_id_no()+",,Y"));
+				parameters.add(new BasicNameValuePair("oldPassengers",userInfo.getPassenger_name()+",1,"+userInfo.getPassenger_id_no()+""));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_seat",seatNum));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_ticket","1"));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_name",userInfo.getPassenger_name()));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_cardtype","1"));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_cardno",userInfo.getPassenger_id_no()));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_mobileno",""));
+				parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			}
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
 			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-
-			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘丽,1,430181198406030024,18606521059,Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers","刘丽,1,430181198406030024"));
-			parameters.add(new BasicNameValuePair("passenger_2_seat","3"));
-			parameters.add(new BasicNameValuePair("passenger_2_ticket","1"));
-			parameters.add(new BasicNameValuePair("passenger_2_name","刘丽"));
-			parameters.add(new BasicNameValuePair("passenger_2_cardtype","1"));
-			parameters.add(new BasicNameValuePair("passenger_2_cardno","430181198406030024"));
-			parameters.add(new BasicNameValuePair("passenger_2_mobileno","18606521059"));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			
 			parameters.add(new BasicNameValuePair("oldPassengers",""));
 			parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			parameters.add(new BasicNameValuePair("oldPassengers",""));
@@ -462,6 +489,7 @@ public class RobTicket {
 			httpGet.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17");
 			response = httpClient.execute(httpGet);
 			if(response.getStatusLine().getStatusCode() == 200){
+				Thread.sleep(1000);
 				orderTicketToQueue(ticketNo,seatNum,token,params,date,rangCode);
 			}
 		} catch (Exception e) {
@@ -473,6 +501,7 @@ public class RobTicket {
 	
 	public void orderTicketToQueue(String ticketNo,String seatNum,String token,String[] params,String date,String rangCode){
 		HttpResponse response = null;
+		HttpPost httpPost = null;
 		try {
 			URIBuilder builder = new URIBuilder();
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
@@ -481,8 +510,6 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("leftTicketStr",ticketNo));
 			parameters.add(new BasicNameValuePair("textfield","中文或拼音首字母"));
 			//一个人只有一个checkbox0
-			parameters.add(new BasicNameValuePair("checkbox0","0"));
-			parameters.add(new BasicNameValuePair("checkbox2","2"));
 			parameters.add(new BasicNameValuePair("orderRequest.train_date",date));
 			parameters.add(new BasicNameValuePair("orderRequest.train_no", params[3]));
 			parameters.add(new BasicNameValuePair("orderRequest.station_train_code", params[0]));
@@ -500,26 +527,28 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("orderRequest.id_mode","Y"));
 			
 			//订票人信息 第一个人
-			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘文波,1,430981198702272830,,Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers","刘文波,1,430981198702272830"));
-			parameters.add(new BasicNameValuePair("passenger_1_seat","3"));
-			parameters.add(new BasicNameValuePair("passenger_1_ticket","1"));
-			parameters.add(new BasicNameValuePair("passenger_1_name","刘文波"));
-			parameters.add(new BasicNameValuePair("passenger_1_cardtype","1"));
-			parameters.add(new BasicNameValuePair("passenger_1_cardno","430981198702272830"));
-			parameters.add(new BasicNameValuePair("passenger_1_mobileno",""));
+			String[] orders = StringUtils.split(configInfo.getOrderPerson(),",");
+			int n = 1;
+			for(int i = 0;i < orders.length;i++){
+				userInfo = userInfoMap.get(orders[i]);
+				if(userInfo == null){
+					logger.warn("this name is not have!name:"+orders[i]);
+					continue;
+				}
+				parameters.add(new BasicNameValuePair("checkbox"+userInfo.getIndex(),""+userInfo.getIndex()));
+				parameters.add(new BasicNameValuePair("passengerTickets",seatNum+",0,1,"+userInfo.getPassenger_name()
+						+",1,"+userInfo.getPassenger_id_no()+",,Y"));
+				parameters.add(new BasicNameValuePair("oldPassengers",userInfo.getPassenger_name()+",1,"+userInfo.getPassenger_id_no()+""));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_seat",seatNum));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_ticket","1"));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_name",userInfo.getPassenger_name()));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_cardtype","1"));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_cardno",userInfo.getPassenger_id_no()));
+				parameters.add(new BasicNameValuePair("passenger_"+n+"_mobileno",""));
+				parameters.add(new BasicNameValuePair("checkbox9","Y"));
+			}
+			parameters.add(new BasicNameValuePair("oldPassengers",""));
 			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-
-			parameters.add(new BasicNameValuePair("passengerTickets","3,0,1,刘丽,1,430181198406030024,18606521059,Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers","刘丽,1,430181198406030024"));
-			parameters.add(new BasicNameValuePair("passenger_2_seat","3"));
-			parameters.add(new BasicNameValuePair("passenger_2_ticket","1"));
-			parameters.add(new BasicNameValuePair("passenger_2_name","刘丽"));
-			parameters.add(new BasicNameValuePair("passenger_2_cardtype","1"));
-			parameters.add(new BasicNameValuePair("passenger_2_cardno","430181198406030024"));
-			parameters.add(new BasicNameValuePair("passenger_2_mobileno","18606521059"));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			
 			parameters.add(new BasicNameValuePair("oldPassengers",""));
 			parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			parameters.add(new BasicNameValuePair("oldPassengers",""));
@@ -527,12 +556,12 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("oldPassengers",""));
 			parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			parameters.add(new BasicNameValuePair("orderRequest.reserve_flag","A"));
-			parameters.add(new BasicNameValuePair("tFlag","dc"));
+//			parameters.add(new BasicNameValuePair("tFlag","dc"));
 			parameters.add(new BasicNameValuePair("randCode",rangCode));
 			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/confirmPassengerAction.do");
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
 			URI uri = builder.build();
-			HttpPost httpPost = new HttpPost(uri);
+			httpPost = new HttpPost(uri);
 			httpPost.setEntity(uef);
 			httpPost.addHeader("Accept","application/json, text/javascript, */*");
 			httpPost.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
@@ -548,7 +577,7 @@ public class RobTicket {
 			if(response.getStatusLine().getStatusCode() == 200){
 				HttpEntity entity = response.getEntity();
 				JSONObject jsonObject = JSONObject.parseObject(EntityUtils.toString(entity));
-				logger.info(jsonObject.toJSONString());
+//				logger.info(jsonObject.toJSONString());
 				String errorMessage = jsonObject.getString("errMsg");
 				if("Y".equals(errorMessage) || StringUtils.isEmpty(errorMessage)){
 					logger.info("订票成功了，赶紧付款吧!");
@@ -559,11 +588,15 @@ public class RobTicket {
 				}else if(StringUtils.contains(errorMessage,"非法的订票请求")){
 					searchTicket(date);
 				}else{
+					logger.info(errorMessage);
 					searchTicket(date);
 				}
 			}
 		} catch (Exception e) {
 			logger.error("orderTicketToQueue error!",e);
+			HttpClientUtils.closeQuietly(response);
+			httpPost.abort();
+			searchTicket(date);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}

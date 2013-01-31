@@ -38,7 +38,9 @@ public class HttpClientUtil {
 		if(StringUtils.isNotEmpty(urlEnum.getContentType())){
 			httpPost.addHeader("Content-Type",urlEnum.getContentType());
 		}
-		httpPost.addHeader("Referer",REFER);
+		if(StringUtils.isNotEmpty(urlEnum.getRefer())){
+			httpPost.addHeader("Referer",urlEnum.getRefer());
+		}
 		return httpPost;
 	}
 	
@@ -58,7 +60,9 @@ public class HttpClientUtil {
 		if(StringUtils.isNotEmpty(urlEnum.getContentType())){
 			httpGet.addHeader("Content-Type",urlEnum.getContentType());
 		}
-		httpGet.addHeader("Referer",REFER);
+		if(StringUtils.isNotEmpty(urlEnum.getRefer())){
+			httpGet.addHeader("Referer",urlEnum.getRefer());
+		}
 		return httpGet;
 	}
 	
