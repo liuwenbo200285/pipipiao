@@ -39,6 +39,10 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.conn.params.ConnManagerParams;
+import org.apache.http.conn.params.ConnPerRouteBean;
+import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.conn.scheme.PlainSocketFactory;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
@@ -49,10 +53,13 @@ import org.apache.http.cookie.MalformedCookieException;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.impl.cookie.BrowserCompatSpec;
+import org.apache.http.impl.pool.BasicConnPool;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
+import org.apache.http.pool.ConnPoolControl;
 import org.apache.http.protocol.ExecutionContext;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
@@ -69,6 +76,7 @@ import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
 import com.wenbo.pipipiao.enumutil.UrlEnum;
 import com.wenbo.pipipiao.util.ConfigUtil;
+import com.wenbo.pipipiao.util.JsoupUtil;
 
 public class Demo {
 	
@@ -181,7 +189,10 @@ public class Demo {
 			}
 			return false;
 			} };
-		httpClient = new DefaultHttpClient();
+		PoolingClientConnectionManager  cm = new PoolingClientConnectionManager();
+		cm.setMaxTotal(200);
+		cm.setDefaultMaxPerRoute(20);
+		httpClient = new DefaultHttpClient(cm);
 		httpClient = (DefaultHttpClient) WebClientDevWrapper.wrapClient(httpClient);
 		httpClient.getCookieSpecs().register("easy", csf);
 		httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, "easy");
