@@ -237,7 +237,7 @@ public class RobTicket {
 			message = StringUtils.remove(message,"&nbsp;");
 			if(StringUtils.isEmpty(message)){
 				logger.warn("车次配置错误，没有查询到车次！");
-				Thread.sleep(20000);
+				Thread.sleep(5000);
 				searchTicket(date);
 			}
 			int m = 1;
@@ -263,7 +263,7 @@ public class RobTicket {
 			}
 			if(document == null){
 				logger.info("没有余票,休息一秒，继续刷票");
-				Thread.sleep(3000);
+				Thread.sleep(1000);
 				searchTicket(date);
 			}else{
 				logger.info("有票了，开始订票~~~~~~~~~");
@@ -475,17 +475,21 @@ public class RobTicket {
 	public  void checkTicket(String ticketNo,String seatNum,String token,String[] params,String date,String rangCode){
 		HttpResponse response = null;
 		try {
-			HttpGet httpGet = new HttpGet("https://dynamic.12306.cn/otsweb/order/confirmPassengerAction.do?method=getQueueCount&train_date=2013-02-10&train_no=6a000K907507&station=K9075&seat=3&from=CSQ&to=BJQ&ticket=1014203020404410002410142001683028200072");
-			httpGet.addHeader("Accept","application/json, text/javascript, */*");
-			httpGet.addHeader("Accept-Charset","GBK,utf-8;q=0.7,*;q=0.3");
-			httpGet.addHeader("Accept-Language","zh-CN,zh;q=0.8");
-			httpGet.addHeader("Connection","keep-alive");
-			httpGet.addHeader("Content-Type","application/x-www-form-urlencoded");
-			httpGet.addHeader("X-Requested-With","XMLHttpRequest");
-			httpGet.addHeader("Host","dynamic.12306.cn");
-			httpGet.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17");
+			URIBuilder builder = new URIBuilder();
+			builder.setScheme("https").setHost("dynamic.12306.cn").setPath(UrlEnum.SEARCH_TICKET_INFO.getPath())
+			.setParameter("method","getQueueCount")
+			.setParameter("train_date",date)
+			.setParameter("train_no",params[3])
+			.setParameter("station",params[0])
+			.setParameter("seat",seatNum)
+			.setParameter("from", params[4])
+			.setParameter("to", params[5])
+			.setParameter("ticket",ticketNo);
+			URI uri = builder.build();
+			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,UrlEnum.SEARCH_TICKET_INFO);
 			response = httpClient.execute(httpGet);
 			if(response.getStatusLine().getStatusCode() == 200){
+				logger.info(EntityUtils.toString(response.getEntity()));
 				Thread.sleep(1000);
 				orderTicketToQueue(ticketNo,seatNum,token,params,date,rangCode);
 			}
@@ -544,16 +548,7 @@ public class RobTicket {
 				parameters.add(new BasicNameValuePair("passenger_"+n+"_mobileno",""));
 				parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			}
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
-			parameters.add(new BasicNameValuePair("oldPassengers",""));
-			parameters.add(new BasicNameValuePair("checkbox9","Y"));
 			parameters.add(new BasicNameValuePair("orderRequest.reserve_flag","A"));
-//			parameters.add(new BasicNameValuePair("tFlag","dc"));
 			parameters.add(new BasicNameValuePair("randCode",rangCode));
 			builder.setScheme("https").setHost("dynamic.12306.cn").setPath("/otsweb/order/confirmPassengerAction.do");
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters, "UTF-8");
@@ -574,7 +569,7 @@ public class RobTicket {
 			if(response.getStatusLine().getStatusCode() == 200){
 				HttpEntity entity = response.getEntity();
 				JSONObject jsonObject = JSONObject.parseObject(EntityUtils.toString(entity));
-//				logger.info(jsonObject.toJSONString());
+				logger.info(jsonObject.toJSONString());
 				String errorMessage = jsonObject.getString("errMsg");
 				if("Y".equals(errorMessage) || StringUtils.isEmpty(errorMessage)){
 					logger.info("订票成功了，赶紧付款吧!");
