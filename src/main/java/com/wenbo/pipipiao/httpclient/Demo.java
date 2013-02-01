@@ -1,44 +1,22 @@
 package com.wenbo.pipipiao.httpclient;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpRequestRetryHandler;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.params.ClientPNames;
-import org.apache.http.client.utils.HttpClientUtils;
-import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
@@ -50,26 +28,16 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.impl.cookie.BrowserCompatSpec;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.ExecutionContext;
 import org.apache.http.protocol.HttpContext;
-import org.apache.http.util.EntityUtils;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
-import com.wenbo.pipipiao.enumutil.UrlEnum;
 import com.wenbo.pipipiao.util.ConfigUtil;
-import com.wenbo.pipipiao.util.JsoupUtil;
 
 public class Demo {
 	
@@ -77,12 +45,6 @@ public class Demo {
 	private static DefaultHttpClient httpClient = null;
 	
 	private static Logger logger = LoggerFactory.getLogger(Demo.class);
-	
-	private static final String RANG_CODE_PATH = "/Users/wenbo/work/yanzhengma/rangCode.jpg";
-	
-	private static final String REFER = "https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init";
-	
-	private static final String URL_HEAD = "https://dynamic.12306.cn";
 	
 	 /** 
      * 最大连接数 
@@ -104,10 +66,6 @@ public class Demo {
      * 读取超时时间 
      */  
     public final static int READ_TIMEOUT = 10000; 
-    
-    private static HttpResponse response = null;
-    
-    private static String rangCode = null;
     
     private static Map<String,UserInfo> userInfoMap = null;
     
@@ -163,7 +121,7 @@ public class Demo {
 		//异常自动恢复
 		HttpRequestRetryHandler myRetryHandler = new HttpRequestRetryHandler() {
 			public boolean retryRequest(IOException exception, int executionCount,HttpContext context) {
-			logger.error("httpclient error!",exception);
+//			logger.error("httpclient error!",exception);
 			if (executionCount >= 5) {
 			    // 如果超过最大重试次数,那么就不要继续了
 			    return false; 
