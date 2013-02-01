@@ -29,7 +29,7 @@ public class ConfigUtil {
 			configInfo.setTrainNo(properties.getProperty("trainNo",""));
 			configInfo.setTrainClass(properties.getProperty("trainClass",""));
 			configInfo.setOrderPerson(new String(properties.getProperty("orderPerson","").getBytes("ISO8859-1"),"UTF-8"));
-			configInfo.setOrderSeat(Integer.valueOf(properties.getProperty("orderSeat","0")));
+			configInfo.setOrderSeat(properties.getProperty("orderSeat",""));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}finally{

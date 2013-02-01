@@ -215,8 +215,11 @@ public class RobTicket {
 			URI uri = builder.build();
 			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,UrlEnum.SEARCH_TICKET);
 			response = httpClient.execute(httpGet);
-			if(response.getStatusLine().getStatusCode() == 200){
+			if(response.getStatusLine().getStatusCode() == 200
+					&& response.getEntity().getContentLength() > 0){
 				checkTickeAndOrder(EntityUtils.toString(response.getEntity()),date);
+			}else{
+				Thread.sleep(10000);
 			}
 		} catch (Exception e) {
 			logger.error("searchTicket error!",e);
@@ -245,6 +248,7 @@ public class RobTicket {
 			int lastIndex = 0;
 			boolean isLast = false;
 			String trainInfo = null;
+			int ticketType = 0;
 			while((n = StringUtils.indexOf(message,m+",<span")) != -1
 					|| !isLast){
 				if(n == -1){
@@ -254,7 +258,8 @@ public class RobTicket {
 					trainInfo = StringUtils.substring(message, lastIndex,n);
 				}
 				document = Jsoup.parse(trainInfo);
-				if(JsoupUtil.checkHaveTicket(document,configInfo.getOrderSeat())){
+				ticketType = JsoupUtil.checkHaveTicket(document,configInfo.getOrderSeat());
+				if(ticketType > 0){
 					break;
 				}
 				document = null;
@@ -268,7 +273,8 @@ public class RobTicket {
 			}else{
 				logger.info("有票了，开始订票~~~~~~~~~");
 				String[] params = JsoupUtil.getTicketInfo(document);
-				orderTicket(date,params);
+				logger.info("ticketType:"+ticketType);
+				orderTicket(date,params,ticketType);
 			}
 		} catch (Exception e) {
 			logger.error("checkTickeAndOrder error!",e);
@@ -282,7 +288,7 @@ public class RobTicket {
 	 * @throws IOException 
 	 * @throws IllegalStateException 
 	 */
-	public  void orderTicket(String date,String[] params) throws IllegalStateException, IOException{
+	public  void orderTicket(String date,String[] params,int ticketType) throws IllegalStateException, IOException{
 		HttpPost httpPost = null;
 		OutputStream outputStream = null;
 		HttpResponse response = null;
@@ -340,7 +346,7 @@ public class RobTicket {
 				}
 				element = document.getElementById("passenger_1_seat");
 				if(element != null){
-					TrainSeatEnum trainSeatEnum = HttpClientUtil.getSeatEnum(configInfo.getOrderSeat());
+					TrainSeatEnum trainSeatEnum = HttpClientUtil.getSeatEnum(ticketType);
 					if(trainSeatEnum == null){
 						logger.warn("预订坐席填写不正确，请重新填写!");
 						return;
@@ -586,9 +592,7 @@ public class RobTicket {
 			}
 		} catch (Exception e) {
 			logger.error("orderTicketToQueue error!",e);
-			HttpClientUtils.closeQuietly(response);
 			httpPost.abort();
-			searchTicket(date);
 		}finally{
 			HttpClientUtils.closeQuietly(response);
 		}

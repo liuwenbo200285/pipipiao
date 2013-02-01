@@ -70,8 +70,9 @@ public class JsoupUtil {
 	/**
 	 * 检测有没有票
 	 */
-	public static boolean checkHaveTicket(Document document,int type){
-		boolean flag = false;
+	public static int checkHaveTicket(Document document,String type){
+		int max = 10000000;
+		Integer maxType = 0;
 		try {
 			if(document == null){
 				throw new IllegalAccessException("document is null");
@@ -81,6 +82,7 @@ public class JsoupUtil {
 			List<Node> nodes = document.childNode(0).childNodes().get(1).childNodes();
 			Node node = null;
 			int n = 1;
+			int index = 0;
 			for(int i = 5; i < nodes.size(); i++){
 				node = nodes.get(i);
 			    if(StringUtils.contains(node.toString(),"--")){
@@ -88,35 +90,38 @@ public class JsoupUtil {
 			    	if(nos != null && nos.length > 0){
 			    		for(String nn:nos){
 			    			if("--".equals(nn)){
-			    				if(type == n){
-			    					return flag;
-			    				}
 			    				n++;
 			    			}else if(StringUtils.isNumeric(nn)){
-			    				if(type == n){
+			    				if((index = StringUtils.indexOf(type, n+",")) != -1){
 			    					logger.info(trainNo+"有票:"+nn+"张!");
-			    					return true;
+			    					max = compare(max,index);
+			    					if(max == 0){
+			    						return n;
+			    					}else if(max == index){
+			    						maxType = index;
+			    					}
 			    				}
 			    				n++;
 			    			}
 			    		}
 			    	}
 			    }else if("darkgray".equals(node.attr("color"))){
-			    	if(n == type){
-			    		logger.info(trainNo+"没有票!");
-			    		return false;
-			    	}
+			    	logger.info(trainNo+"没有票!");
 			    	n++;
 			    }else if("#008800".equals(node.attr("color"))){
-			    	if(n == type){
+			    	if((index = StringUtils.indexOf(type, n+",")) != -1){
 			    		logger.info(trainNo+"有大量的票!");
-			    		return true;
+			    		max = compare(max,index);
+			    		if(max == 0){
+    						return n;
+    					}else if(max == index){
+    						maxType = index;
+    					}
 			    	}
 			    	n++;
 			    }else if(node.hasAttr("onclick")){
 					String info = node.childNode(0).toString();
 					logger.info(trainNo+info);
-					return false;
 //					int bengin = StringUtils.indexOf(info,"点起售");
 //					if(bengin != -1){
 //						String clo = StringUtils.substring(info,0,bengin);
@@ -131,12 +136,26 @@ public class JsoupUtil {
 //						}
 //					}
 			    }
-			    
 			}
 		} catch (Exception e) {
 			logger.error("checkHaveTicket error!",e);
 		}
-		return flag;
+		return maxType;
+	}
+	
+	
+	/**
+	 * 比较坐席位置，放在前面的优先
+	 * @param max
+	 * @param index
+	 * @return
+	 */
+	private static int compare(int max,int index){
+		if(max == 0
+				|| max > index){
+			max = index;
+		}
+		return max;
 	}
 	
 	/**
