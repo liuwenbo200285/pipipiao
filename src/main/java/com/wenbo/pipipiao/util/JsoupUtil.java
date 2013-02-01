@@ -73,12 +73,13 @@ public class JsoupUtil {
 	public static int checkHaveTicket(Document document,String type){
 		int max = 10000000;
 		Integer maxType = 0;
+		String trainNo = null;
 		try {
 			if(document == null){
 				throw new IllegalAccessException("document is null");
 			}
 			Elements elements = document.getElementsByTag("span");
-			String trainNo = elements.get(0).childNode(0).toString();
+			trainNo = elements.get(0).childNode(0).toString();
 			List<Node> nodes = document.childNode(0).childNodes().get(1).childNodes();
 			Node node = null;
 			int n = 1;
@@ -93,7 +94,7 @@ public class JsoupUtil {
 			    				n++;
 			    			}else if(StringUtils.isNumeric(nn)){
 			    				if((index = StringUtils.indexOf(type, n+",")) != -1){
-			    					logger.info(trainNo+"有票:"+nn+"张!");
+//			    					logger.info(trainNo+"有票:"+nn+"张!");
 			    					max = compare(max,index);
 			    					if(max == 0){
 			    						return n;
@@ -106,11 +107,11 @@ public class JsoupUtil {
 			    		}
 			    	}
 			    }else if("darkgray".equals(node.attr("color"))){
-			    	logger.info(trainNo+"没有票!");
+//			    	logger.info(trainNo+"没有票!");
 			    	n++;
 			    }else if("#008800".equals(node.attr("color"))){
 			    	if((index = StringUtils.indexOf(type, n+",")) != -1){
-			    		logger.info(trainNo+"有大量的票!");
+//			    		logger.info(trainNo+"有大量的票!");
 			    		max = compare(max,index);
 			    		if(max == 0){
     						return n;
@@ -139,6 +140,11 @@ public class JsoupUtil {
 			}
 		} catch (Exception e) {
 			logger.error("checkHaveTicket error!",e);
+		}
+		if(maxType > 0){
+			logger.info(trainNo+"有票!");
+		}else{
+			logger.info(trainNo+"没有票!");
 		}
 		return maxType;
 	}
