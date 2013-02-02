@@ -30,6 +30,7 @@ public class ConfigUtil {
 			configInfo.setTrainClass(properties.getProperty("trainClass",""));
 			configInfo.setOrderPerson(new String(properties.getProperty("orderPerson","").getBytes("ISO8859-1"),"UTF-8"));
 			configInfo.setOrderSeat(properties.getProperty("orderSeat",""));
+			configInfo.setOrderTime(properties.getProperty("orderTime","00:00--24:00"));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}finally{

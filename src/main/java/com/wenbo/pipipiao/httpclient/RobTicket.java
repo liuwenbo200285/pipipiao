@@ -227,13 +227,12 @@ public class RobTicket {
 					.setParameter("trainClass", configInfo.getTrainClass())
 					.setParameter("includeStudent", "00")
 					.setParameter("seatTypeAndNum", "")
-					.setParameter("orderRequest.start_time_str", "00:00--24:00");
+					.setParameter("orderRequest.start_time_str",configInfo.getOrderTime());
 			URI uri = builder.build();
 			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,
 					UrlEnum.SEARCH_TICKET);
 			response = httpClient.execute(httpGet);
-			if (response.getStatusLine().getStatusCode() == 200
-					&& response.getEntity().getContentLength() > 0) {
+			if (response.getStatusLine().getStatusCode() == 200) {
 				info = EntityUtils.toString(response.getEntity());
 			}
 		} catch (Exception e) {
@@ -343,13 +342,11 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("lishi", params[1]));
 			parameters.add(new BasicNameValuePair("locationCode", params[13]));
 			parameters.add(new BasicNameValuePair("mmStr", params[12]));
-			parameters.add(new BasicNameValuePair("round_start_time_str",
-					"00:00--24:00"));
+			parameters.add(new BasicNameValuePair("round_start_time_str",configInfo.getOrderTime()));
 			parameters.add(new BasicNameValuePair("round_train_date", date));
 			parameters.add(new BasicNameValuePair("seattype_num", ""));
 			parameters.add(new BasicNameValuePair("single_round_type", "1"));
-			parameters.add(new BasicNameValuePair("start_time_str",
-					"00:00--24:00"));
+			parameters.add(new BasicNameValuePair("start_time_str",configInfo.getOrderTime()));
 			parameters.add(new BasicNameValuePair("station_train_code",
 					params[0]));
 			parameters

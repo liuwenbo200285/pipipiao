@@ -23,6 +23,8 @@ public class ConfigInfo {
 	private String orderPerson;
 	
 	private String orderSeat;
+	
+	private String orderTime;
 
 	public String getUsername() {
 		return username;
@@ -94,5 +96,13 @@ public class ConfigInfo {
 
 	public void setOrderSeat(String orderSeat) {
 		this.orderSeat = orderSeat;
+	}
+
+	public String getOrderTime() {
+		return orderTime;
+	}
+
+	public void setOrderTime(String orderTime) {
+		this.orderTime = orderTime;
 	}
 }

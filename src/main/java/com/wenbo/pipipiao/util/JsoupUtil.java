@@ -3,7 +3,12 @@ package com.wenbo.pipipiao.util;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -107,7 +112,6 @@ public class JsoupUtil {
 			    		}
 			    	}
 			    }else if("darkgray".equals(node.attr("color"))){
-//			    	logger.info(trainNo+"没有票!");
 			    	n++;
 			    }else if("#008800".equals(node.attr("color"))){
 			    	if((index = StringUtils.indexOf(type, n+",")) != -1){
@@ -120,22 +124,28 @@ public class JsoupUtil {
     					}
 			    	}
 			    	n++;
-			    }else if(node.hasAttr("onclick")){
+			    }else if("btn130".equals(node.attr("class"))){
 					String info = node.childNode(0).toString();
-					logger.info(trainNo+info);
-//					int bengin = StringUtils.indexOf(info,"点起售");
-//					if(bengin != -1){
-//						String clo = StringUtils.substring(info,0,bengin);
-//						if(StringUtils.isNumeric(clo)){
-//							int hour = Integer.valueOf(clo);
-////							SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-mm-dd HH:MM:ss");
-////							Date beginDate = simpleDateFormat.parse("2012-01-25 "+hour+":00:00");
-////							Date currentDate = new Date();
-////							long time = beginDate.getTime()-currentDate.getTime();
-//							System.out.println("休息"+time+"毫秒！");
-////							Thread.sleep(time);
-//						}
-//					}
+					logger.info(trainNo+":"+info);
+					int bengin = StringUtils.indexOf(info,"点起售");
+					if(bengin != -1){
+						String clo = StringUtils.substring(info,0,bengin);
+						if(StringUtils.isNumeric(clo)){
+							int hour = Integer.valueOf(clo);
+							GregorianCalendar calender = new GregorianCalendar(Locale.CHINA);
+							SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+							String str = calender.get(Calendar.YEAR)+"-"+
+									(calender.get(Calendar.MONTH)+1)+"-"+(calender.get(Calendar.DAY_OF_MONTH))+" "+hour+":00:00";
+							Date beginDate = simpleDateFormat.parse(str);
+							Date now = new Date();
+							long waitTime = (beginDate.getTime()-now.getTime());
+							if(waitTime > 10*1000){
+								waitTime = waitTime-5*1000;
+								logger.info("等待："+waitTime/(1000*60)+"分钟！");
+								Thread.sleep(waitTime);
+							}
+						}
+					}
 			    }
 			}
 		} catch (Exception e) {
