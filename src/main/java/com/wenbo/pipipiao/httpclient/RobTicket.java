@@ -39,6 +39,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
+import com.wenbo.pipipiao.domain.OrderParameter;
 import com.wenbo.pipipiao.domain.UserInfo;
 import com.wenbo.pipipiao.enumutil.TrainSeatEnum;
 import com.wenbo.pipipiao.enumutil.UrlEnum;
@@ -206,6 +207,7 @@ public class RobTicket {
 	public void searchTicket(String date) {
 		HttpResponse response = null;
 		String info = null;
+		OrderParameter orderParameter = null;
 		try {
 			URIBuilder builder = new URIBuilder();
 			builder.setScheme("https")
@@ -232,9 +234,20 @@ public class RobTicket {
 			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,
 					UrlEnum.SEARCH_TICKET);
 			response = httpClient.execute(httpGet);
-			if (response.getStatusLine().getStatusCode() == 200) {
+			int code = response.getStatusLine().getStatusCode();
+			info = EntityUtils.toString(response.getEntity());
+			while(StringUtils.isBlank(info) || (orderParameter=checkTickeAndOrder(info, date)) == null){
+				HttpClientUtils.closeQuietly(response);
+				logger.info("没有余票,休息一秒，继续刷票");
+				Thread.sleep(2000);
+				response = httpClient.execute(httpGet);
+				code = response.getStatusLine().getStatusCode();
 				info = EntityUtils.toString(response.getEntity());
 			}
+			logger.info("有票了，开始订票~~~~~~~~~");
+			String[] params = JsoupUtil.getTicketInfo(orderParameter.getDocument());
+			logger.info("ticketType:" + orderParameter.getTicketType());
+			orderTicket(date, params, orderParameter.getTicketType());
 		} catch (Exception e) {
 			logger.error("searchTicket error!", e);
 		} finally {
@@ -260,8 +273,9 @@ public class RobTicket {
 	 * @throws IOException
 	 * @throws IllegalStateException
 	 */
-	public void checkTickeAndOrder(String message, String date) {
+	public OrderParameter checkTickeAndOrder(String message, String date) {
 		Document document = null;
+		OrderParameter orderParameter = null;
 		try {
 			message = StringUtils.remove(message, "&nbsp;");
 			if (StringUtils.isEmpty(message)) {
@@ -294,21 +308,17 @@ public class RobTicket {
 				m++;
 				lastIndex = n;
 			}
-			if (document == null) {
-				logger.info("没有余票,休息一秒，继续刷票");
-				Thread.sleep(2000);
-				searchTicket(date);
-			} else {
-				logger.info("有票了，开始订票~~~~~~~~~");
-				String[] params = JsoupUtil.getTicketInfo(document);
-				logger.info("ticketType:" + ticketType);
-				orderTicket(date, params, ticketType);
+			if (document != null) {
+				orderParameter = new OrderParameter();
+				orderParameter.setDocument(document);
+				orderParameter.setTicketType(ticketType);
 			}
 		} catch (Exception e) {
 			logger.error("checkTickeAndOrder error!", e);
 		} finally {
 
 		}
+		return orderParameter;
 	}
 
 	/**
