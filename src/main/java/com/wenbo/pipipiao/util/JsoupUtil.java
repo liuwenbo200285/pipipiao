@@ -84,6 +84,9 @@ public class JsoupUtil {
 				throw new IllegalAccessException("document is null");
 			}
 			Elements elements = document.getElementsByTag("span");
+			if(elements.size() == 0){
+				return maxType;
+			}
 			trainNo = elements.get(0).childNode(0).toString();
 			List<Node> nodes = document.childNode(0).childNodes().get(1).childNodes();
 			Node node = null;
@@ -126,9 +129,9 @@ public class JsoupUtil {
 			    	n++;
 			    }else if("btn130".equals(node.attr("class"))){
 					String info = node.childNode(0).toString();
-					logger.info(trainNo+":"+info);
 					int bengin = StringUtils.indexOf(info,"点起售");
 					if(bengin != -1){
+						logger.info(trainNo+":"+info);
 						String clo = StringUtils.substring(info,0,bengin);
 						if(StringUtils.isNumeric(clo)){
 							int hour = Integer.valueOf(clo);

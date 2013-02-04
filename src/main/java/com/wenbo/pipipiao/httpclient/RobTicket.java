@@ -134,8 +134,8 @@ public class RobTicket {
 			if (response.getStatusLine().getStatusCode() == 302) {
 			} else if (response.getStatusLine().getStatusCode() == 404) {
 			} else if (response.getStatusLine().getStatusCode() == 200) {
-				Document document = JsoupUtil.getPageDocument(response
-						.getEntity().getContent());
+				String info = EntityUtils.toString(response.getEntity());
+				Document document = Jsoup.parse(info);
 				HttpClientUtils.closeQuietly(response);
 				// 判断登录状态
 				if (JsoupUtil.validateLogin(document)) {
@@ -144,7 +144,11 @@ public class RobTicket {
 					}
 					searchTicket(configInfo.getOrderDate());
 				} else {
-					getLoginRand();
+					if(StringUtils.contains(info,"系统维护中")){
+						logger.info("系统维护中，请明天订票!");
+					}else{
+						getLoginRand();
+					}
 				}
 			}
 
@@ -239,10 +243,21 @@ public class RobTicket {
 			while(StringUtils.isBlank(info) || (orderParameter=checkTickeAndOrder(info, date)) == null){
 				HttpClientUtils.closeQuietly(response);
 				logger.info("没有余票,休息一秒，继续刷票");
-				Thread.sleep(2000);
+				Thread.sleep(1000);
 				response = httpClient.execute(httpGet);
 				code = response.getStatusLine().getStatusCode();
 				info = EntityUtils.toString(response.getEntity());
+				if(StringUtils.contains(info, "系统维护中")){
+					return;
+				}
+				if("-10".equals(info)){
+					logger.info("刷新太过频繁，休息一分钟");
+					Thread.sleep(60000);
+				}
+				if(StringUtils.isBlank(info)){
+					logger.info("刷新太过频繁，休息30秒");
+					Thread.sleep(30000);
+				}
 			}
 			logger.info("有票了，开始订票~~~~~~~~~");
 			String[] params = JsoupUtil.getTicketInfo(orderParameter.getDocument());
