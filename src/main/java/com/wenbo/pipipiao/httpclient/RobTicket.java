@@ -242,21 +242,17 @@ public class RobTicket {
 			info = EntityUtils.toString(response.getEntity());
 			while(StringUtils.isBlank(info) || (orderParameter=checkTickeAndOrder(info, date)) == null){
 				HttpClientUtils.closeQuietly(response);
-				logger.info("没有余票,休息一秒，继续刷票");
-				Thread.sleep(1000);
+				logger.info("没有余票,休息"+configInfo.getSearchSleepTime()+"秒，继续刷票");
+				Thread.sleep(configInfo.getSearchSleepTime()*1000);
 				response = httpClient.execute(httpGet);
 				code = response.getStatusLine().getStatusCode();
 				info = EntityUtils.toString(response.getEntity());
 				if(StringUtils.contains(info, "系统维护中")){
 					return;
 				}
-				if("-10".equals(info)){
-					logger.info("刷新太过频繁，休息一分钟");
-					Thread.sleep(60000);
-				}
-				if(StringUtils.isBlank(info)){
-					logger.info("刷新太过频繁，休息30秒");
-					Thread.sleep(30000);
+				if("-10".equals(info)|| StringUtils.isBlank(info)){
+					logger.info("刷新太过频繁，休息"+configInfo.getSearchWatiTime()+"秒");
+					Thread.sleep(configInfo.getSearchWatiTime()*1000);
 				}
 			}
 			logger.info("有票了，开始订票~~~~~~~~~");

@@ -25,6 +25,10 @@ public class ConfigInfo {
 	private String orderSeat;
 	
 	private String orderTime;
+	
+	private Integer searchSleepTime;
+	
+	private Integer searchWatiTime;
 
 	public String getUsername() {
 		return username;
@@ -104,5 +108,21 @@ public class ConfigInfo {
 
 	public void setOrderTime(String orderTime) {
 		this.orderTime = orderTime;
+	}
+
+	public Integer getSearchSleepTime() {
+		return searchSleepTime;
+	}
+
+	public void setSearchSleepTime(Integer searchSleepTime) {
+		this.searchSleepTime = searchSleepTime;
+	}
+
+	public Integer getSearchWatiTime() {
+		return searchWatiTime;
+	}
+
+	public void setSearchWatiTime(Integer searchWatiTime) {
+		this.searchWatiTime = searchWatiTime;
 	}
 }

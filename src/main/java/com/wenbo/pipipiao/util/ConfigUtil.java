@@ -31,6 +31,8 @@ public class ConfigUtil {
 			configInfo.setOrderPerson(new String(properties.getProperty("orderPerson","").getBytes("ISO8859-1"),"UTF-8"));
 			configInfo.setOrderSeat(properties.getProperty("orderSeat",""));
 			configInfo.setOrderTime(properties.getProperty("orderTime","00:00--24:00"));
+			configInfo.setSearchSleepTime(Integer.valueOf(properties.getProperty("searchSleepTime","1")));
+			configInfo.setSearchWatiTime(Integer.valueOf(properties.getProperty("searchWatiTime","5")));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}finally{
