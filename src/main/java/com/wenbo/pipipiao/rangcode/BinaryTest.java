@@ -1,4 +1,4 @@
-package com.wenbo.piao.test;
+package com.wenbo.pipipiao.rangcode;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
