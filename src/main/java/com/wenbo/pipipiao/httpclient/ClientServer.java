@@ -39,12 +39,12 @@ import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
 import com.wenbo.pipipiao.util.ConfigUtil;
 
-public class Demo {
+public class ClientServer {
 	
 	
 	private static DefaultHttpClient httpClient = null;
 	
-	private static Logger logger = LoggerFactory.getLogger(Demo.class);
+	private static Logger logger = LoggerFactory.getLogger(ClientServer.class);
 	
 	 /** 
      * 最大连接数 
