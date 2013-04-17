@@ -159,6 +159,36 @@ public class RobTicket {
 			HttpClientUtils.closeQuietly(response);
 		}
 	}
+	
+	/**
+	 * 获取登录账号用户信息
+	 * 
+	 * @throws URISyntaxException
+	 */
+	public void getOrderPersonInit() throws URISyntaxException {
+		HttpResponse response = null;
+		try {
+			URIBuilder builder = new URIBuilder();
+			builder.setScheme("https").setHost("dynamic.12306.cn")
+					.setPath(UrlEnum.GET_ORDER_PERSON_INIT.getPath())
+					.setParameter("method","initUsualPassenger12306");
+			URI uri = builder.build();
+			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,
+					UrlEnum.GET_ORDER_PERSON_INIT);
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				getOrderPerson();
+			}
+			logger.info(response.getStatusLine().getStatusCode()+"");
+		} catch (Exception e) {
+			logger.error("getOrderPerson error!", e);
+		} finally {
+			logger.info("close getOrderPerson");
+			HttpClientUtils.closeQuietly(response);
+		}
+	}
 
 	/**
 	 * 获取登录账号用户信息
@@ -170,17 +200,28 @@ public class RobTicket {
 		try {
 			URIBuilder builder = new URIBuilder();
 			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.GET_ORDER_PERSON.getPath())
-					.setParameter("method", "getpassengerJson");
+					.setPath(UrlEnum.GET_ORDER_PERSON.getPath());
 			URI uri = builder.build();
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method",
+					"getPagePassengerAll"));
+			parameters.add(new BasicNameValuePair("pageIndex",
+					"0"));
+			parameters.add(new BasicNameValuePair("pageSize",
+					"100"));
+			parameters.add(new BasicNameValuePair("passenger_name",
+					"请输入汉字或拼音首字母"));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
+					"UTF-8");
 			HttpPost httpPost = HttpClientUtil.getHttpPost(uri,
 					UrlEnum.GET_ORDER_PERSON);
+			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				String info = EntityUtils.toString(response.getEntity());
 				JSONObject jsonObject = JSON.parseObject(info);
 				List<UserInfo> userInfos = JSONArray.parseArray(
-						jsonObject.getString("passengerJson"), UserInfo.class);
+						jsonObject.getString("rows"), UserInfo.class);
 				if (userInfos == null || userInfos.size() == 0) {
 					logger.error("此账号没有添加联系人!");
 					return;
