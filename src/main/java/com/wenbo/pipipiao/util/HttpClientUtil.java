@@ -20,8 +20,8 @@ public class HttpClientUtil {
 	/**
 	 *requestType 1 GET 2 POST
 	 */
-	public static HttpPost getHttpPost(URI uri,UrlEnum urlEnum){
-		HttpPost httpPost = new HttpPost(uri);
+	public static HttpPost getHttpPost(UrlEnum urlEnum){
+		HttpPost httpPost = new HttpPost(UrlEnum.DO_MAIN.getPath()+urlEnum.getPath());
 		if(StringUtils.isNotEmpty(urlEnum.getAccept())){
 			httpPost.addHeader("Accept",urlEnum.getAccept());
 		}
@@ -44,8 +44,8 @@ public class HttpClientUtil {
 		return httpPost;
 	}
 	
-	public static HttpGet getHttpGet(URI uri,UrlEnum urlEnum){
-		HttpGet httpGet = new HttpGet(uri);
+	public static HttpGet getHttpGet(UrlEnum urlEnum){
+		HttpGet httpGet = new HttpGet(UrlEnum.DO_MAIN.getPath()+urlEnum.getPath());
 		if(StringUtils.isNotEmpty(urlEnum.getAccept())){
 			httpGet.addHeader("Accept",urlEnum.getAccept());
 		}

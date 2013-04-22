@@ -79,13 +79,8 @@ public class RobTicket {
 	public void getLoginRand() {
 		HttpResponse response = null;
 		try {
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.LOGIN_INIT_URL.getPath())
-					.setParameter("method", "loginAysnSuggest");
-			URI uri = builder.build();
-			HttpGet httpget = HttpClientUtil.getHttpGet(uri,
-					UrlEnum.LOGIN_INIT_URL);
+			HttpGet httpget = HttpClientUtil.getHttpGet(UrlEnum.LOGIN_INIT_URL);
+			httpget.getParams().setParameter("method", "loginAysnSuggest");
 			response = httpClient.execute(httpget);
 			HttpEntity entity = response.getEntity();
 			if (entity != null && entity.getContentLength() > 0) {
@@ -123,12 +118,7 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("randErrorFocus", ""));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
 					"UTF-8");
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.LONGIN_CONFIM.getPath());
-			URI uri = builder.build();
-			HttpPost httpPost = HttpClientUtil.getHttpPost(uri,
-					UrlEnum.LONGIN_CONFIM);
+			HttpPost httpPost = HttpClientUtil.getHttpPost(UrlEnum.LONGIN_CONFIM);
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 302) {
@@ -168,20 +158,19 @@ public class RobTicket {
 	public void getOrderPersonInit() throws URISyntaxException {
 		HttpResponse response = null;
 		try {
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.GET_ORDER_PERSON_INIT.getPath())
-					.setParameter("method","initUsualPassenger12306");
-			URI uri = builder.build();
-			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,
-					UrlEnum.GET_ORDER_PERSON_INIT);
-			response = httpClient.execute(httpGet);
-			if (response.getStatusLine().getStatusCode() == 200) {
-				String info = EntityUtils.toString(response.getEntity());
-				logger.info(info);
-				getOrderPerson();
-			}
-			logger.info(response.getStatusLine().getStatusCode()+"");
+////			URIBuilder builder = new URIBuilder();
+////			builder.setScheme("https").setHost("dynamic.12306.cn")
+////					.setPath(UrlEnum.GET_ORDER_PERSON_INIT.getPath())
+////					.setParameter("method","initUsualPassenger12306");
+////			URI uri = builder.build();
+////			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.GET_ORDER_PERSON_INIT);
+//			response = httpClient.execute(httpGet);
+//			if (response.getStatusLine().getStatusCode() == 200) {
+//				String info = EntityUtils.toString(response.getEntity());
+//				logger.info(info);
+//				getOrderPerson();
+//			}
+//			logger.info(response.getStatusLine().getStatusCode()+"");
 		} catch (Exception e) {
 			logger.error("getOrderPerson error!", e);
 		} finally {
@@ -198,10 +187,6 @@ public class RobTicket {
 	public void getOrderPerson() throws URISyntaxException {
 		HttpResponse response = null;
 		try {
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.GET_ORDER_PERSON.getPath());
-			URI uri = builder.build();
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("method",
 					"getPagePassengerAll"));
@@ -213,8 +198,7 @@ public class RobTicket {
 					"请输入汉字或拼音首字母"));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
 					"UTF-8");
-			HttpPost httpPost = HttpClientUtil.getHttpPost(uri,
-					UrlEnum.GET_ORDER_PERSON);
+			HttpPost httpPost = HttpClientUtil.getHttpPost(UrlEnum.GET_ORDER_PERSON);
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 200) {
@@ -254,30 +238,24 @@ public class RobTicket {
 		String info = null;
 		OrderParameter orderParameter = null;
 		try {
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https")
-					.setHost("dynamic.12306.cn")
-					.setPath("/otsweb/order/querySingleAction.do")
-					.setParameter("method", "queryLeftTicket")
-					.setParameter("orderRequest.train_date", date)
-					.setParameter("orderRequest.from_station_telecode",
-							configInfo.getFromStation())
-					.setParameter("orderRequest.to_station_telecode",
-							configInfo.getToStation());
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method","queryLeftTicket"));
+			parameters.add(new BasicNameValuePair("orderRequest.train_date",date));
+			parameters.add(new BasicNameValuePair("orderRequest.from_station_telecode",configInfo.getFromStation()));
+			parameters.add(new BasicNameValuePair("orderRequest.to_station_telecode",configInfo.getToStation()));
 			if (StringUtils.isNotEmpty(configInfo.getTrainNo())) {
-				builder.setParameter("orderRequest.train_no",
-						configInfo.getTrainNo());
+				parameters.add(new BasicNameValuePair("orderRequest.train_no",configInfo.getTrainNo()));
 			} else {
-				builder.setParameter("orderRequest.train_no", "");
+				parameters.add(new BasicNameValuePair("orderRequest.train_no",""));
 			}
-			builder.setParameter("trainPassType", "QB")
-					.setParameter("trainClass", configInfo.getTrainClass())
-					.setParameter("includeStudent", "00")
-					.setParameter("seatTypeAndNum", "")
-					.setParameter("orderRequest.start_time_str",configInfo.getOrderTime());
-			URI uri = builder.build();
-			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,
-					UrlEnum.SEARCH_TICKET);
+			parameters.add(new BasicNameValuePair("trainPassType","QB"));
+			parameters.add(new BasicNameValuePair("trainClass",configInfo.getTrainClass()));
+			parameters.add(new BasicNameValuePair("includeStudent","00"));
+			parameters.add(new BasicNameValuePair("seatTypeAndNum",""));
+			parameters.add(new BasicNameValuePair("orderRequest.start_time_str",configInfo.getOrderTime()));
+			UrlEncodedFormEntity urlEncodedFormEntity = new UrlEncodedFormEntity(parameters);
+			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.SEARCH_TICKET);
+			httpGet.setURI(new URI(UrlEnum.DO_MAIN.getPath()+UrlEnum.SEARCH_TICKET.getPath()+"?"+EntityUtils.toString(urlEncodedFormEntity)));
 			response = httpClient.execute(httpGet);
 			int code = response.getStatusLine().getStatusCode();
 			info = EntityUtils.toString(response.getEntity());
@@ -387,7 +365,6 @@ public class RobTicket {
 		OutputStream outputStream = null;
 		HttpResponse response = null;
 		try {
-			URIBuilder builder = new URIBuilder();
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("method",
 					"submutOrderRequest"));
@@ -428,10 +405,7 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("ypInfoDetail", params[11]));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
 					"UTF-8");
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.BOOK_TICKET.getPath());
-			URI uri = builder.build();
-			httpPost = HttpClientUtil.getHttpPost(uri, UrlEnum.BOOK_TICKET);
+			httpPost = HttpClientUtil.getHttpPost(UrlEnum.BOOK_TICKET);
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 302) {
@@ -500,7 +474,6 @@ public class RobTicket {
 			String[] params, String date) {
 		HttpResponse response = null;
 		try {
-			URIBuilder builder = new URIBuilder();
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("method", "checkOrderInfo"));
 			parameters.add(new BasicNameValuePair(
@@ -589,13 +562,9 @@ public class RobTicket {
 			parameters.add(new BasicNameValuePair("tFlag", "dc"));
 			String rangCode = getRandCode(UrlEnum.ORDER_RANGCODE_URL);
 			parameters.add(new BasicNameValuePair("rand", rangCode));
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.GET_ORDER_INFO.getPath());
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
 					"UTF-8");
-			URI uri = builder.build();
-			HttpPost httpPost = HttpClientUtil.getHttpPost(uri,
-					UrlEnum.GET_ORDER_INFO);
+			HttpPost httpPost = HttpClientUtil.getHttpPost(UrlEnum.GET_ORDER_INFO);
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 200) {
@@ -633,20 +602,18 @@ public class RobTicket {
 			String[] params, String date, String rangCode) {
 		HttpResponse response = null;
 		try {
-			URIBuilder builder = new URIBuilder();
-			builder.setScheme("https").setHost("dynamic.12306.cn")
-					.setPath(UrlEnum.SEARCH_TICKET_INFO.getPath())
-					.setParameter("method", "getQueueCount")
-					.setParameter("train_date", date)
-					.setParameter("train_no", params[3])
-					.setParameter("station", params[0])
-					.setParameter("seat", seatNum)
-					.setParameter("from", params[4])
-					.setParameter("to", params[5])
-					.setParameter("ticket", ticketNo);
-			URI uri = builder.build();
-			HttpGet httpGet = HttpClientUtil.getHttpGet(uri,
-					UrlEnum.SEARCH_TICKET_INFO);
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method","getQueueCount"));
+			parameters.add(new BasicNameValuePair("train_date",date));
+			parameters.add(new BasicNameValuePair("train_no",params[3]));
+			parameters.add(new BasicNameValuePair("station",params[0]));
+			parameters.add(new BasicNameValuePair("seat",seatNum));
+			parameters.add(new BasicNameValuePair("from",params[4]));
+			parameters.add(new BasicNameValuePair("to",params[5]));
+			parameters.add(new BasicNameValuePair("ticket",ticketNo));
+			UrlEncodedFormEntity urlEncodedFormEntity = new UrlEncodedFormEntity(parameters);
+			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.SEARCH_TICKET_INFO);
+			httpGet.setURI(new URI(UrlEnum.DO_MAIN.getPath()+UrlEnum.SEARCH_TICKET_INFO.getPath()+"?"+EntityUtils.toString(urlEncodedFormEntity)));
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				logger.info(EntityUtils.toString(response.getEntity()));
