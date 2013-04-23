@@ -31,6 +31,10 @@ public enum UrlEnum {
 	ORDER_RANGCODE_URL("/passCodeAction.do?rand=randp","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","","",""),
 	//获取坐席值的url
 	GET_SEAT_VALUE("passCodeAction.do?rand:randp","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","","",""),
+	//未完成订单
+	NO_NOTCOMPLETE("order/myOrderAction.do?method=queryMyOrderNotComplete&leftmenu=N","text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+			"https://dynamic.12306.cn/otsweb/order/myOrderAction.do?method=queryMyOrderNotComplete&leftmenu=Y",
+			"",""),
 	//查询预订车票余票信息
 	SEARCH_TICKET_INFO("order/confirmPassengerAction.do","application/json, text/javascript, */*","","","");
 	private String path;

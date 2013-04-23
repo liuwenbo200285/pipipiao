@@ -132,7 +132,8 @@ public class RobTicket {
 					if (userInfoMap == null) {
 						getOrderPerson();
 					}
-					searchTicket(configInfo.getOrderDate());
+					getNoCompleteOrder();
+//					searchTicket(configInfo.getOrderDate());
 				} else {
 					if(StringUtils.contains(info,"系统维护中")){
 						logger.info("系统维护中，请明天订票!");
@@ -805,6 +806,37 @@ public class RobTicket {
 			return randCode;
 		}
 		return null;
+	}
+	
+	/**
+	 * 获取未完成订单
+	 */
+	public void getNoCompleteOrder(){
+		HttpResponse response = null;
+		try {
+			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.NO_NOTCOMPLETE);
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				Document document = JsoupUtil.getPageDocument(response.getEntity().getContent());
+				Elements elements = document.getElementsByClass("tab_conw");
+				System.out.println(elements.size());
+				for(Element element:elements){
+					Element element2 = element.getElementsByClass("jdan_tfont").get(0);
+					Elements elements2 = element2.getElementsByTag("li");
+					for(Element element3:elements2){
+						System.out.println(element3.text());
+					}
+					Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
+					for(Element element3:elements3){
+						System.out.println(element3.text());
+					}
+				}
+			}
+		} catch (Exception e) {
+			logger.info("checkTicket error!", e);
+		} finally {
+			HttpClientUtils.closeQuietly(response);
+		}
 	}
 
 }

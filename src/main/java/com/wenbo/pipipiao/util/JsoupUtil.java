@@ -1,9 +1,12 @@
 package com.wenbo.pipipiao.util;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -20,6 +23,9 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.wenbo.pipipiao.domain.Order;
+import com.wenbo.pipipiao.domain.OrderInfo;
+
 public class JsoupUtil {
 	
 	private static final Logger logger = LoggerFactory.getLogger(JsoupUtil.class);
@@ -30,11 +36,26 @@ public class JsoupUtil {
 	 * @throws UnsupportedEncodingException 
 	 */
 	public static void main(String[] args) throws Exception {
-//		InputStream inputStream = new FileInputStream(new File("/Users/wenbo/Desktop/1230602"));
-//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream,"GBK"));
-//		String str = "0,<span id='id_6c000G601108' class='base_txtdiv' onmouseover=javascript:onStopHover('6c000G601108#CWQ#IOQ') onmouseout='onStopOut()'>G6011</span>,<img src='/otsweb/images/tips/first.gif'>&nbsp;&nbsp;&nbsp;&nbsp;长沙南&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;07:00,<img src='/otsweb/images/tips/last.gif'>&nbsp;&nbsp;&nbsp;&nbsp;深圳北&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;&nbsp;&nbsp;&nbsp;10:20,03:20,--,<font color='darkgray'>无</font>,<font color='darkgray'>无</font>,4,--,--,--,--,--,--,--,<a name='btn130_2' class='btn130_2' style='text-decoration:none;' onclick=javascript:getSelected('G6011#03:20#07:00#6c000G601108#CWQ#IOQ#10:20#长沙南#深圳北#01#07#O*****0005M*****0000P*****0000#35EB8F56585E40AB3F341A1C908FA836604716C818826A3EF5E0601F#Q6')>预&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;订</a>";
-//		IOUtils.closeQuietly(bufferedReader);
-//		IOUtils.closeQuietly(inputStream);
+		InputStream inputStream = new FileInputStream(new File("C://Noname6.txt"));
+		Document document = getPageDocument(inputStream);
+		Elements elements = document.getElementsByAttributeValueStarting("id","form_all_");
+		for(Element element:elements){
+			System.out.println(element.attr("id"));
+			Element element2 = element.getElementsByClass("jdan_tfont").get(0);
+			Elements elements2 = element2.getElementsByTag("li");
+			for(Element element3:elements2){
+				System.out.println(element3.text());
+			}
+			Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
+			for(int i = 0; i < elements3.size(); i++){
+				Element element3 = elements3.get(i);
+				if(i !=0 && i != elements3.size()-1){
+					System.out.println(element3.text());
+				}
+			}
+			System.out.println("====================");
+		}
+		IOUtils.closeQuietly(inputStream);
 	}
 	
 	
@@ -200,6 +221,58 @@ public class JsoupUtil {
 			logger.info("登录失败!原因："+StringUtils.substring(errorMessage,i+1,n-1));
 		}
 		return false;
+	}
+	
+	
+	/**
+	 * 获取未完成订单
+	 * @param inputStream
+	 * @return
+	 */
+	public static List<Order> getNoCompleteOrders(InputStream inputStream){
+		List<Order> orders = new ArrayList<Order>();
+		try {
+			inputStream = new FileInputStream(new File("C://Noname6.txt"));
+			Document document = getPageDocument(inputStream);
+			Elements elements = document.getElementsByClass("tab_conw");
+			Order order = null;
+			for(Element element:elements){
+				order = new Order();
+				Element element2 = element.getElementsByClass("jdan_tfont").get(0);
+				Elements elements2 = element2.getElementsByTag("li");
+				for(Element element3:elements2){
+					if(StringUtils.isBlank(order.getOrderDate())){
+						System.out.println(element3.text());
+						System.out.println(StringUtils.split(element3.text(),"：").length);
+						order.setOrderDate(StringUtils.split(element3.text(),"：")[1].trim());
+					}else{
+						order.setOrderNum(Integer.parseInt(StringUtils.split(element3.text(),"：")[1]));
+					}
+				}
+				Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
+				List<OrderInfo> orderInfos = new ArrayList<OrderInfo>();
+				for(int i = 0; i < elements3.size(); i++){
+					Element element3 = elements3.get(i);
+					if(i !=0 && i != elements3.size()-1){
+						Element element4 = element3.getElementById("checkbox_pay");
+						if(StringUtils.isBlank(order.getOrderNo())){
+							order.setOrderNo(StringUtils.split(element4.attr("name"),"_")[2]);
+						}
+						OrderInfo orderInfo = new OrderInfo();
+						orderInfo.setOrderNo(element4.attr("value"));
+						orderInfo.setInfo(element3.text());
+						orderInfos.add(orderInfo);
+					}
+				}
+				order.setOrderInfos(orderInfos);
+				orders.add(order);
+			}
+		} catch (Exception e) {
+			logger.error("解析未完成订单出错!",e);
+		}finally{
+			IOUtils.closeQuietly(inputStream);
+		}
+		return orders;
 	}
 
 }
