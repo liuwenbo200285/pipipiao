@@ -36,7 +36,10 @@ public enum UrlEnum {
 			"https://dynamic.12306.cn/otsweb/order/myOrderAction.do?method=queryMyOrderNotComplete&leftmenu=Y",
 			"",""),
 	//查询预订车票余票信息
-	SEARCH_TICKET_INFO("order/confirmPassengerAction.do","application/json, text/javascript, */*","","","");
+	SEARCH_TICKET_INFO("order/confirmPassengerAction.do","application/json, text/javascript, */*","","",""),
+	//按出发和到达站查询车次
+	SEARCH_TRAINNO("order/querySingleAction.do?method=queryststrainall","application/json, text/javascript, */*","https://dynamic.12306.cn/otsweb/order/querySingleAction.do?method=init",
+			"application/x-www-form-urlencoded","");
 	private String path;
 	
 	private String accept;

@@ -132,7 +132,8 @@ public class RobTicket {
 					if (userInfoMap == null) {
 						getOrderPerson();
 					}
-					getNoCompleteOrder();
+					getTrainNo();
+//					getNoCompleteOrder();
 //					searchTicket(configInfo.getOrderDate());
 				} else {
 					if(StringUtils.contains(info,"系统维护中")){
@@ -806,6 +807,32 @@ public class RobTicket {
 			return randCode;
 		}
 		return null;
+	}
+	
+	public void getTrainNo(){
+		HttpResponse response = null;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method","queryststrainall"));
+			parameters.add(new BasicNameValuePair("date",configInfo.getOrderDate()));
+			parameters.add(new BasicNameValuePair("fromstation",configInfo.getFromStation()));
+			parameters.add(new BasicNameValuePair("tostation",configInfo.getToStation()));
+			parameters.add(new BasicNameValuePair("starttime",configInfo.getOrderTime()));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
+					"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getHttpPost(UrlEnum.SEARCH_TRAINNO);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				
+			}
+		} catch (Exception e) {
+			logger.info("search trainNo error!", e);
+		} finally {
+			HttpClientUtils.closeQuietly(response);
+		}
 	}
 	
 	/**

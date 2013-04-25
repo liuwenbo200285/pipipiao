@@ -1,9 +1,11 @@
 package com.wenbo.pipipiao.util;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -36,26 +38,11 @@ public class JsoupUtil {
 	 * @throws UnsupportedEncodingException 
 	 */
 	public static void main(String[] args) throws Exception {
-		InputStream inputStream = new FileInputStream(new File("C://Noname6.txt"));
-		Document document = getPageDocument(inputStream);
-		Elements elements = document.getElementsByAttributeValueStarting("id","form_all_");
-		for(Element element:elements){
-			System.out.println(element.attr("id"));
-			Element element2 = element.getElementsByClass("jdan_tfont").get(0);
-			Elements elements2 = element2.getElementsByTag("li");
-			for(Element element3:elements2){
-				System.out.println(element3.text());
-			}
-			Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
-			for(int i = 0; i < elements3.size(); i++){
-				Element element3 = elements3.get(i);
-				if(i !=0 && i != elements3.size()-1){
-					System.out.println(element3.text());
-				}
-			}
-			System.out.println("====================");
-		}
-		IOUtils.closeQuietly(inputStream);
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://station.txt"))));
+		String str = bufferedReader.readLine();
+		String [] trains = StringUtils.split(str,"@");
+		System.out.println(trains.length);
+		IOUtils.closeQuietly(bufferedReader);
 	}
 	
 	
@@ -273,6 +260,39 @@ public class JsoupUtil {
 			IOUtils.closeQuietly(inputStream);
 		}
 		return orders;
+	}
+	
+	/**
+	 * 获取已经完成订单
+	 * @param inputStream
+	 * @return
+	 */
+	public static List<Order> myOrders(InputStream inputStream){
+		try {
+			inputStream = new FileInputStream(new File("C://Noname6.txt"));
+			Document document = getPageDocument(inputStream);
+			Elements elements = document.getElementsByAttributeValueStarting("id","form_all_");
+			for(Element element:elements){
+				System.out.println(element.attr("id"));
+				Element element2 = element.getElementsByClass("jdan_tfont").get(0);
+				Elements elements2 = element2.getElementsByTag("li");
+				for(Element element3:elements2){
+					System.out.println(element3.text());
+				}
+				Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
+				for(int i = 0; i < elements3.size(); i++){
+					Element element3 = elements3.get(i);
+					if(i !=0 && i != elements3.size()-1){
+						System.out.println(element3.text());
+					}
+				}
+				System.out.println("====================");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		IOUtils.closeQuietly(inputStream);
+		return null;
 	}
 
 }
