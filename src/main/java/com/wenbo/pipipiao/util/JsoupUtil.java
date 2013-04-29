@@ -25,6 +25,7 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alibaba.fastjson.JSONArray;
 import com.wenbo.pipipiao.domain.Order;
 import com.wenbo.pipipiao.domain.OrderInfo;
 
@@ -38,11 +39,12 @@ public class JsoupUtil {
 	 * @throws UnsupportedEncodingException 
 	 */
 	public static void main(String[] args) throws Exception {
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://station.txt"))));
-		String str = bufferedReader.readLine();
-		String [] trains = StringUtils.split(str,"@");
-		System.out.println(trains.length);
-		IOUtils.closeQuietly(bufferedReader);
+//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://station.txt"))));
+//		String str = bufferedReader.readLine();
+//		String [] trains = StringUtils.split(str,"@");
+//		System.out.println(trains.length);
+//		IOUtils.closeQuietly(bufferedReader);
+		myOrders(null);
 	}
 	
 	
@@ -219,7 +221,6 @@ public class JsoupUtil {
 	public static List<Order> getNoCompleteOrders(InputStream inputStream){
 		List<Order> orders = new ArrayList<Order>();
 		try {
-			inputStream = new FileInputStream(new File("C://Noname6.txt"));
 			Document document = getPageDocument(inputStream);
 			Elements elements = document.getElementsByClass("tab_conw");
 			Order order = null;
@@ -229,8 +230,6 @@ public class JsoupUtil {
 				Elements elements2 = element2.getElementsByTag("li");
 				for(Element element3:elements2){
 					if(StringUtils.isBlank(order.getOrderDate())){
-						System.out.println(element3.text());
-						System.out.println(StringUtils.split(element3.text(),"：").length);
 						order.setOrderDate(StringUtils.split(element3.text(),"：")[1].trim());
 					}else{
 						order.setOrderNum(Integer.parseInt(StringUtils.split(element3.text(),"：")[1]));
@@ -268,31 +267,40 @@ public class JsoupUtil {
 	 * @return
 	 */
 	public static List<Order> myOrders(InputStream inputStream){
+		List<Order> orders = new ArrayList<Order>();
 		try {
 			inputStream = new FileInputStream(new File("C://Noname6.txt"));
 			Document document = getPageDocument(inputStream);
 			Elements elements = document.getElementsByAttributeValueStarting("id","form_all_");
 			for(Element element:elements){
-				System.out.println(element.attr("id"));
+				Order order = new Order();
 				Element element2 = element.getElementsByClass("jdan_tfont").get(0);
 				Elements elements2 = element2.getElementsByTag("li");
-				for(Element element3:elements2){
-					System.out.println(element3.text());
+				if(elements2 == null){
+					continue;
 				}
+				order.setOrderNo(StringUtils.split(elements2.get(0).text(),"：")[1]);
+				order.setOrderDate(StringUtils.split(elements2.get(1).text(),"：")[1]);
+				order.setOrderNum(Integer.parseInt(StringUtils.split(elements2.get(2).text(),"：")[1]));
 				Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
+				List<OrderInfo> orderInfos = new ArrayList<OrderInfo>();
 				for(int i = 0; i < elements3.size(); i++){
 					Element element3 = elements3.get(i);
 					if(i !=0 && i != elements3.size()-1){
-						System.out.println(element3.text());
+						OrderInfo orderInfo = new OrderInfo();
+						orderInfo.setInfo(element3.text());
+						orderInfos.add(orderInfo);
 					}
 				}
+				order.setOrderInfos(orderInfos);
 				System.out.println("====================");
+				orders.add(order);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		IOUtils.closeQuietly(inputStream);
-		return null;
+		return orders;
 	}
 
 }

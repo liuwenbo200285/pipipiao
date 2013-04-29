@@ -132,8 +132,8 @@ public class RobTicket {
 					if (userInfoMap == null) {
 						getOrderPerson();
 					}
-					getTrainNo();
-//					getNoCompleteOrder();
+//					getTrainNo();
+					getNoCompleteOrder();
 //					searchTicket(configInfo.getOrderDate());
 				} else {
 					if(StringUtils.contains(info,"系统维护中")){
@@ -825,6 +825,13 @@ public class RobTicket {
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				String info = EntityUtils.toString(response.getEntity());
+				JSONArray arry = JSONArray.parseArray(info);
+				for(int i = 0; i < arry.size(); i++){
+					JSONObject object = arry.getJSONObject(i);
+					String str=object.getString("value")+"("+object.getString("start_station_name")+object.getString("start_time")
+							+"→"+object.getString("end_station_name")+object.getString("end_time")+")";
+					System.out.println(str);
+				}
 				logger.info(info);
 				
 			}
@@ -844,20 +851,7 @@ public class RobTicket {
 			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.NO_NOTCOMPLETE);
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
-				Document document = JsoupUtil.getPageDocument(response.getEntity().getContent());
-				Elements elements = document.getElementsByClass("tab_conw");
-				System.out.println(elements.size());
-				for(Element element:elements){
-					Element element2 = element.getElementsByClass("jdan_tfont").get(0);
-					Elements elements2 = element2.getElementsByTag("li");
-					for(Element element3:elements2){
-						System.out.println(element3.text());
-					}
-					Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
-					for(Element element3:elements3){
-						System.out.println(element3.text());
-					}
-				}
+				JsoupUtil.getNoCompleteOrders(response.getEntity().getContent());
 			}
 		} catch (Exception e) {
 			logger.info("checkTicket error!", e);
