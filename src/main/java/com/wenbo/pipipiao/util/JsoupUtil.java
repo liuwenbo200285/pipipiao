@@ -1,11 +1,9 @@
 package com.wenbo.pipipiao.util;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -25,7 +23,6 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alibaba.fastjson.JSONArray;
 import com.wenbo.pipipiao.domain.Order;
 import com.wenbo.pipipiao.domain.OrderInfo;
 
@@ -44,7 +41,9 @@ public class JsoupUtil {
 //		String [] trains = StringUtils.split(str,"@");
 //		System.out.println(trains.length);
 //		IOUtils.closeQuietly(bufferedReader);
-		myOrders(null);
+		String str = "04月30日 G76 深圳北—长沙南 15:50开 05车厢 07C号 一等座 成人票, 603.50元 刘文波 二代身份证 待支付";
+		String[] info = StringUtils.split(str,"开");
+		getNoCompleteOrders(null);
 	}
 	
 	
@@ -221,6 +220,7 @@ public class JsoupUtil {
 	public static List<Order> getNoCompleteOrders(InputStream inputStream){
 		List<Order> orders = new ArrayList<Order>();
 		try {
+			inputStream = new FileInputStream(new File("C://Noname5.txt"));
 			Document document = getPageDocument(inputStream);
 			Elements elements = document.getElementsByClass("tab_conw");
 			Order order = null;
@@ -230,9 +230,9 @@ public class JsoupUtil {
 				Elements elements2 = element2.getElementsByTag("li");
 				for(Element element3:elements2){
 					if(StringUtils.isBlank(order.getOrderDate())){
-						order.setOrderDate(StringUtils.split(element3.text(),"：")[1].trim());
+						order.setOrderDate(element3.text());
 					}else{
-						order.setOrderNum(Integer.parseInt(StringUtils.split(element3.text(),"：")[1]));
+						order.setOrderNum(element3.text());
 					}
 				}
 				Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
@@ -246,7 +246,9 @@ public class JsoupUtil {
 						}
 						OrderInfo orderInfo = new OrderInfo();
 						orderInfo.setOrderNo(element4.attr("value"));
-						orderInfo.setInfo(element3.text());
+						String [] infos = StringUtils.split(element3.text(),"开");
+						order.setTrainInfo(infos[0]);
+						orderInfo.setInfo(infos[1]);
 						orderInfos.add(orderInfo);
 					}
 				}
@@ -279,9 +281,9 @@ public class JsoupUtil {
 				if(elements2 == null){
 					continue;
 				}
-				order.setOrderNo(StringUtils.split(elements2.get(0).text(),"：")[1]);
-				order.setOrderDate(StringUtils.split(elements2.get(1).text(),"：")[1]);
-				order.setOrderNum(Integer.parseInt(StringUtils.split(elements2.get(2).text(),"：")[1]));
+				order.setOrderNo(elements2.get(0).text());
+				order.setOrderDate(elements2.get(1).text());
+				order.setOrderNum(elements2.get(2).text());
 				Elements elements3 = element.getElementsByTag("tbody").get(0).getElementsByTag("tr");
 				List<OrderInfo> orderInfos = new ArrayList<OrderInfo>();
 				for(int i = 0; i < elements3.size(); i++){
@@ -293,7 +295,6 @@ public class JsoupUtil {
 					}
 				}
 				order.setOrderInfos(orderInfos);
-				System.out.println("====================");
 				orders.add(order);
 			}
 		} catch (Exception e) {
