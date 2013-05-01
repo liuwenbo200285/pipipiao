@@ -18,6 +18,8 @@ public class Order {
 	private String orderNum;
 	
 	private List<OrderInfo> orderInfos;
+	
+	private String token;
 
 	public String getOrderNo() {
 		return orderNo;
@@ -57,5 +59,13 @@ public class Order {
 
 	public void setTrainInfo(String trainInfo) {
 		this.trainInfo = trainInfo;
+	}
+
+	public String getToken() {
+		return token;
+	}
+
+	public void setToken(String token) {
+		this.token = token;
 	}
 }

@@ -1,9 +1,11 @@
 package com.wenbo.pipipiao.util;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -36,14 +38,10 @@ public class JsoupUtil {
 	 * @throws UnsupportedEncodingException 
 	 */
 	public static void main(String[] args) throws Exception {
-//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://station.txt"))));
-//		String str = bufferedReader.readLine();
-//		String [] trains = StringUtils.split(str,"@");
-//		System.out.println(trains.length);
-//		IOUtils.closeQuietly(bufferedReader);
-		String str = "04月30日 G76 深圳北—长沙南 15:50开 05车厢 07C号 一等座 成人票, 603.50元 刘文波 二代身份证 待支付";
-		String[] info = StringUtils.split(str,"开");
-		getNoCompleteOrders(null);
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://Noname7.txt"))));
+		String token = getMyOrderInit(new FileInputStream(new File("C://Noname7.txt")),2);
+	    System.out.println(token);
+		IOUtils.closeQuietly(bufferedReader);
 	}
 	
 	
@@ -220,12 +218,14 @@ public class JsoupUtil {
 	public static List<Order> getNoCompleteOrders(InputStream inputStream){
 		List<Order> orders = new ArrayList<Order>();
 		try {
-			inputStream = new FileInputStream(new File("C://Noname5.txt"));
 			Document document = getPageDocument(inputStream);
+			Element tokenElement = document.getElementById("myOrderForm");
+			String token = tokenElement.getElementsByTag("input").get(0).attr("value");
 			Elements elements = document.getElementsByClass("tab_conw");
 			Order order = null;
 			for(Element element:elements){
 				order = new Order();
+				order.setToken(token);
 				Element element2 = element.getElementsByClass("jdan_tfont").get(0);
 				Elements elements2 = element2.getElementsByTag("li");
 				for(Element element3:elements2){
@@ -264,6 +264,25 @@ public class JsoupUtil {
 	}
 	
 	/**
+	 * 获取token
+	 * @param inputStream
+	 * @return
+	 */
+	public static String getMyOrderInit(InputStream inputStream,int type){
+		Document document = getPageDocument(inputStream);
+		if(document != null){
+			Element element = null;
+			if(type == 1){
+				element = document.getElementById("myOrderForm");
+			}else if(type == 2){
+				element = document.getElementById("transferForm");
+			}
+			return element.getElementsByTag("input").get(0).attr("value");
+		}
+		return null;
+	}
+	
+	/**
 	 * 获取已经完成订单
 	 * @param inputStream
 	 * @return
@@ -271,11 +290,13 @@ public class JsoupUtil {
 	public static List<Order> myOrders(InputStream inputStream){
 		List<Order> orders = new ArrayList<Order>();
 		try {
-			inputStream = new FileInputStream(new File("C://Noname6.txt"));
 			Document document = getPageDocument(inputStream);
+			Element tokenElement = document.getElementById("myOrderForm");
+			String token = tokenElement.getElementsByTag("input").get(0).attr("value");
 			Elements elements = document.getElementsByAttributeValueStarting("id","form_all_");
 			for(Element element:elements){
 				Order order = new Order();
+				order.setToken(token);
 				Element element2 = element.getElementsByClass("jdan_tfont").get(0);
 				Elements elements2 = element2.getElementsByTag("li");
 				if(elements2 == null){

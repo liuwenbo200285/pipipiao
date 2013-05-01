@@ -39,6 +39,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
+import com.wenbo.pipipiao.domain.Order;
 import com.wenbo.pipipiao.domain.OrderParameter;
 import com.wenbo.pipipiao.domain.UserInfo;
 import com.wenbo.pipipiao.enumutil.TrainSeatEnum;
@@ -135,6 +136,7 @@ public class RobTicket {
 //					getTrainNo();
 					getNoCompleteOrder();
 //					searchTicket(configInfo.getOrderDate());
+//					getCompletedOrder();
 				} else {
 					if(StringUtils.contains(info,"系统维护中")){
 						logger.info("系统维护中，请明天订票!");
@@ -851,13 +853,79 @@ public class RobTicket {
 			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.NO_NOTCOMPLETE);
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
-				JsoupUtil.getNoCompleteOrders(response.getEntity().getContent());
+				List<Order> orders = JsoupUtil.getNoCompleteOrders(response.getEntity().getContent());
+				System.out.println(orders.size());
+				for(Order order:orders){
+					canelOrder(order.getOrderNo(),order.getToken());
+				}
 			}
 		} catch (Exception e) {
 			logger.info("checkTicket error!", e);
 		} finally {
 			HttpClientUtils.closeQuietly(response);
 		}
+	}
+	
+	/**
+	 * 获取已完成订单
+	 */
+	public void getCompletedOrder(){
+		HttpResponse response = null;
+		try {
+			HttpGet httpGet = HttpClientUtil.getHttpGet(UrlEnum.SEARCH_COMPLETED_ORDER_INIT);
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				String token = JsoupUtil.getMyOrderInit(response.getEntity().getContent(),1);
+				List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+				parameters.add(new BasicNameValuePair("method","queryMyOrder"));
+				parameters.add(new BasicNameValuePair("org.apache.struts.taglib.html.TOKEN",token));
+				parameters.add(new BasicNameValuePair("leftmenu","Y"));
+				parameters.add(new BasicNameValuePair("queryDataFlag","1"));
+				parameters.add(new BasicNameValuePair("queryOrderDTO.from_order_date","2013-01-01"));
+				parameters.add(new BasicNameValuePair("queryOrderDTO.to_order_date","2013-03-01"));
+				parameters.add(new BasicNameValuePair("queryOrderDTO.sequence_no",""));
+				parameters.add(new BasicNameValuePair("queryOrderDTO.train_code",""));
+				parameters.add(new BasicNameValuePair("queryOrderDTO.name",""));
+				UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
+						"UTF-8");
+				HttpPost httpPost = HttpClientUtil.getHttpPost(UrlEnum.SEARCH_COMPLETED_ORDER);
+				httpPost.setEntity(uef);
+				response = httpClient.execute(httpPost);
+				if (response.getStatusLine().getStatusCode() == 200) {
+					List<Order> orders = JsoupUtil.myOrders(response.getEntity().getContent());
+					System.out.println(orders.size());
+				}
+			}
+		} catch (Exception e) {
+			logger.info("checkTicket error!", e);
+		} finally {
+			HttpClientUtils.closeQuietly(response);
+		}
+	}
+	
+	public void canelOrder(String orderNo,String token){
+		HttpResponse response = null;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("method","cancelMyOrderNotComplete"));
+			parameters.add(new BasicNameValuePair("org.apache.struts.taglib.html.TOKEN",token));
+			parameters.add(new BasicNameValuePair("sequence_no",orderNo));
+			parameters.add(new BasicNameValuePair("orderRequest.tour_flag",""));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,
+					"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getHttpPost(UrlEnum.CANCEL_ORDER);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				System.out.println(info);
+			}
+		} catch (Exception e) {
+			logger.info("checkTicket error!", e);
+		} finally {
+			HttpClientUtils.closeQuietly(response);
+		}
+		getNoCompleteOrder();
 	}
 
 }
