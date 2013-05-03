@@ -1,11 +1,9 @@
 package com.wenbo.pipipiao.util;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -38,10 +36,11 @@ public class JsoupUtil {
 	 * @throws UnsupportedEncodingException 
 	 */
 	public static void main(String[] args) throws Exception {
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://Noname7.txt"))));
-		String token = getMyOrderInit(new FileInputStream(new File("C://Noname7.txt")),2);
-	    System.out.println(token);
-		IOUtils.closeQuietly(bufferedReader);
+//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(new File("C://Noname7.txt"))));
+//		String token = getMyOrderInit(new FileInputStream(new File("C://Noname7.txt")),2);
+//	    System.out.println(token);
+//		IOUtils.closeQuietly(bufferedReader);
+		getNoCompleteOrders(new FileInputStream(new File("C://Noname8.txt")));
 	}
 	
 	
@@ -240,15 +239,21 @@ public class JsoupUtil {
 				for(int i = 0; i < elements3.size(); i++){
 					Element element3 = elements3.get(i);
 					if(i !=0 && i != elements3.size()-1){
-						Element element4 = element3.getElementById("checkbox_pay");
-						if(StringUtils.isBlank(order.getOrderNo())){
-							order.setOrderNo(StringUtils.split(element4.attr("name"),"_")[2]);
-						}
 						OrderInfo orderInfo = new OrderInfo();
-						orderInfo.setOrderNo(element4.attr("value"));
+						Element element4 = element3.getElementById("checkbox_pay");
+						if(element4 != null){
+							if(StringUtils.isBlank(order.getOrderNo())){
+								order.setOrderNo(StringUtils.split(element4.attr("name"),"_")[2]);
+							}
+							orderInfo.setOrderNo(element4.attr("value"));
+						}
 						String [] infos = StringUtils.split(element3.text(),"开");
-						order.setTrainInfo(infos[0]);
-						orderInfo.setInfo(infos[1]);
+						if(infos.length == 2){
+							order.setTrainInfo(infos[0]);
+							orderInfo.setInfo(infos[1]);
+						}else{
+							orderInfo.setInfo(infos[0]);
+						}
 						orderInfos.add(orderInfo);
 					}
 				}
