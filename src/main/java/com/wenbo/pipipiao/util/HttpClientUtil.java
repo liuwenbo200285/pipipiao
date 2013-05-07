@@ -1,7 +1,5 @@
 package com.wenbo.pipipiao.util;
 
-import java.net.URI;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
