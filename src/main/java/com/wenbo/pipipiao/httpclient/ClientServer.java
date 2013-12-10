@@ -1,22 +1,41 @@
 package com.wenbo.pipipiao.httpclient;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpRequestRetryHandler;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.params.ClientPNames;
+import org.apache.http.client.utils.HttpClientUtils;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.conn.scheme.Scheme;
 import org.apache.http.conn.scheme.SchemeRegistry;
 import org.apache.http.conn.ssl.SSLSocketFactory;
@@ -28,16 +47,26 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectStrategy;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.impl.cookie.BrowserCompatSpec;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.ExecutionContext;
 import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
+import com.wenbo.pipipiao.enumutil.UrlEnum;
+import com.wenbo.pipipiao.enumutil.UrlNewEnum;
 import com.wenbo.pipipiao.util.ConfigUtil;
+import com.wenbo.pipipiao.util.HttpClientUtil;
 
 public class ClientServer {
 	
@@ -173,9 +202,133 @@ public class ClientServer {
 		        }
 		});
 		logger.info("开始执行程序~~~~~~~~~~~~");
-		new RobTicket(configInfo, userInfo, userInfoMap, httpClient).getLoginRand();
+//		new RobTicket(configInfo, userInfo, userInfoMap, httpClient).getLoginRand();
+		test(httpClient);
 		logger.info("程序执行完毕~~~~~~~~~~~~");
 	}	
+	
+	public static void test(HttpClient httpClient){
+		HttpResponse response;
+		try {
+			String username = "liuwenbo200285";
+			String password = "2580233";
+			String randCode = getRandCode(UrlNewEnum.LOGIN_RANGCODE_URL);
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("loginUserDTO.user_name",username));
+			parameters.add(new BasicNameValuePair("userDTO.password", password));
+			parameters.add(new BasicNameValuePair("randCode", randCode));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.LONGIN_CONFIM);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				JSONObject jsonObject = JSON.parseObject(info);
+				logger.info(jsonObject.getString("messages"));
+				if("Y".equals(jsonObject.getJSONObject("data").getString("loginCheck"))){
+					getPassengers(httpClient);
+				}
+			}
+		}catch (Exception e) {
+			logger.error("Login","登录出错!",e);
+		}
+	}
+	
+	/**
+	 * 获取登录验证码
+	 * 
+	 * @param uri
+	 * @return
+	 * @throws URISyntaxException
+	 */
+	public static String getRandCode(UrlNewEnum urlEnum) {
+		HttpGet httpGet = new HttpGet(UrlNewEnum.DO_MAIN.getPath()+ urlEnum.getPath());
+		InputStream inputStream = null;
+		OutputStream outputStream = null;
+		HttpResponse response = null;
+		try {
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				inputStream = response.getEntity().getContent();
+				String fileDir = ClientServer.class.getClassLoader()
+						.getResource(".").getPath();
+				File file = new File(fileDir + "/rangcode/code.jpg");
+				outputStream = new BufferedOutputStream(new FileOutputStream(
+						file));
+				IOUtils.copy(inputStream, outputStream);
+			} else {
+				HttpClientUtils.closeQuietly(response);
+				IOUtils.closeQuietly(outputStream);
+				getRandCode(urlEnum);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			HttpClientUtils.closeQuietly(response);
+			IOUtils.closeQuietly(outputStream);
+		}
+		logger.info("请输入验证码:");
+		Scanner scanner = new Scanner(System.in);
+		String randCode = scanner.nextLine();
+		if ("N".equals(randCode.toUpperCase())) {
+			getRandCode(urlEnum);
+		} else {
+			return randCode;
+		}
+		return null;
+	}
+	
+	public static void getPassengers(HttpClient httpClient){
+		HttpResponse response;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("pageIndex","1"));
+			parameters.add(new BasicNameValuePair("pageSize","100"));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.GET_ORDER_PERSON);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				JSONObject jsonObject = JSON.parseObject(info);
+				JSONArray jsonArray = jsonObject.getJSONObject("data").getJSONArray("datas");
+				logger.info(jsonArray.size()+"");
+				for(int i = 0; i < jsonArray.size(); i++){
+					logger.info(jsonArray.getJSONObject(i).toJSONString());
+				}
+				searchOrder(httpClient);
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void searchOrder(HttpClient httpClient){
+		HttpResponse response;
+		try {
+			URIBuilder builder = new URIBuilder();
+			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
+					.setPath(UrlNewEnum.SEARCH_TICKET.getPath())
+					.setParameter("leftTicketDTO.train_date", "2013-12-29")
+					.setParameter("leftTicketDTO.from_station","SZQ")
+					.setParameter("leftTicketDTO.to_station","AEQ")
+					.setParameter("purpose_codes","ADULT");
+			URI uri = builder.build();
+			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.SEARCH_TICKET);
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				logger.info(EntityUtils.toString(response.getEntity()));
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
 	
 }
 
