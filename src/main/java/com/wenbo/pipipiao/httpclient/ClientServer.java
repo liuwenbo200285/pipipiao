@@ -216,7 +216,7 @@ public class ClientServer {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("loginUserDTO.user_name",username));
 			parameters.add(new BasicNameValuePair("userDTO.password", password));
-			parameters.add(new BasicNameValuePair("randCode", randCode));
+			parameters.add(new BasicNameValuePair("randCode", randCode)); 
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
 			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.LONGIN_CONFIM);
 			httpPost.setEntity(uef);
@@ -315,7 +315,7 @@ public class ClientServer {
 			URIBuilder builder = new URIBuilder();
 			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
 					.setPath(UrlNewEnum.SEARCH_TICKET.getPath())
-					.setParameter("leftTicketDTO.train_date", "2013-12-29")
+					.setParameter("leftTicketDTO.train_date", "2013-12-15")
 					.setParameter("leftTicketDTO.from_station","SZQ")
 					.setParameter("leftTicketDTO.to_station","AEQ")
 					.setParameter("purpose_codes","ADULT");
@@ -324,6 +324,33 @@ public class ClientServer {
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				logger.info(EntityUtils.toString(response.getEntity()));
+				queryMyOrderNoComplete(httpClient);
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void queryMyOrderNoComplete(HttpClient httpClient){
+		HttpResponse response;
+		try {
+			URIBuilder builder = new URIBuilder();
+			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
+					.setPath(UrlNewEnum.QUERY_MYORDER_NOCOMPLETE.getPath())
+					.setParameter("_json_att","");
+			URI uri = builder.build();
+			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.QUERY_MYORDER_NOCOMPLETE);
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				JSONObject jsonObject = JSON.parseObject(info);
+				JSONArray array = jsonObject.getJSONObject("data").getJSONArray("orderDBList");
+				if(array.size() > 0){
+					for(int i = 0; i <array.size(); i++){
+						logger.info(array.get(i).toString());
+					}
+				}
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
