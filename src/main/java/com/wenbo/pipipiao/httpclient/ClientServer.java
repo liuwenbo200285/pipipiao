@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -22,7 +23,6 @@ import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
 import org.apache.http.HttpEntityEnclosingRequest;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -55,6 +55,7 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +64,6 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
-import com.wenbo.pipipiao.enumutil.UrlEnum;
 import com.wenbo.pipipiao.enumutil.UrlNewEnum;
 import com.wenbo.pipipiao.util.ConfigUtil;
 import com.wenbo.pipipiao.util.HttpClientUtil;
@@ -302,29 +302,75 @@ public class ClientServer {
 				for(int i = 0; i < jsonArray.size(); i++){
 					logger.info(jsonArray.getJSONObject(i).toJSONString());
 				}
-				searchOrder(httpClient);
+				submitinit();
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
 		}
 	}
 	
-	public static void searchOrder(HttpClient httpClient){
+	public static void searchOrder(){
 		HttpResponse response;
 		try {
 			URIBuilder builder = new URIBuilder();
 			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
 					.setPath(UrlNewEnum.SEARCH_TICKET.getPath())
-					.setParameter("leftTicketDTO.train_date", "2013-12-15")
-					.setParameter("leftTicketDTO.from_station","SZQ")
+					.setParameter("leftTicketDTO.train_date", "2014-01-02")
+					.setParameter("leftTicketDTO.from_station","BJQ")
 					.setParameter("leftTicketDTO.to_station","AEQ")
 					.setParameter("purpose_codes","ADULT");
 			URI uri = builder.build();
 			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.SEARCH_TICKET);
+			List<Cookie> cookies =  httpClient.getCookieStore().getCookies();
+			StringBuilder stringBuilder = new StringBuilder();
+			for(Cookie cookie:cookies){
+				stringBuilder.append(cookie.getName()+"="+cookie.getValue()+";");
+			}
+			stringBuilder.append("_jc_save_czxxcx_toStation=%u957F%u6C99%2CCSQ;");
+			stringBuilder.append("_jc_save_czxxcx_fromDate=2013-12-11;");
+			stringBuilder.append("_jc_save_fromStation=%u6DF1%u5733%2CBJQ;");
+			stringBuilder.append("_jc_save_toStation=%u76CA%u9633%2CAEQ;");
+			stringBuilder.append("_jc_save_fromDate=2014-01-02;");
+			stringBuilder.append("_jc_save_toDate=2013-12-31;");
+			stringBuilder.append("_jc_save_wfdc_flag=dc");
+			httpGet.setHeader("Cookie",stringBuilder.toString());
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
-				logger.info(EntityUtils.toString(response.getEntity()));
-				queryMyOrderNoComplete(httpClient);
+				String info = EntityUtils.toString(response.getEntity());
+				JSONObject jsonObject = JSONObject.parseObject(info);
+				JSONArray jsonArray = jsonObject.getJSONArray("data");
+				JSONObject object = jsonArray.getJSONObject(1);
+				checkuser();
+				submitOrderRequest(object.getString("secretStr"));
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void checkuser(){
+		HttpResponse response;
+		try {
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.CHECKUSER);
+			List<Cookie> cookies =  httpClient.getCookieStore().getCookies();
+			StringBuilder stringBuilder = new StringBuilder();
+			for(Cookie cookie:cookies){
+				stringBuilder.append(cookie.getName()+"="+cookie.getValue()+";");
+			}
+			stringBuilder.append("_jc_save_czxxcx_toStation=%u957F%u6C99%2CCSQ;");
+			stringBuilder.append("_jc_save_czxxcx_fromDate=2013-12-11;");
+			stringBuilder.append("_jc_save_fromStation=%u6DF1%u5733%2CBJQ;");
+			stringBuilder.append("_jc_save_toStation=%u76CA%u9633%2CAEQ;");
+			stringBuilder.append("_jc_save_fromDate=2014-01-02;");
+			stringBuilder.append("_jc_save_toDate=2013-12-31;");
+			stringBuilder.append("_jc_save_wfdc_flag=dc");
+			httpPost.setHeader("Cookie",stringBuilder.toString());
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
@@ -351,6 +397,95 @@ public class ClientServer {
 						logger.info(array.get(i).toString());
 					}
 				}
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void submitinit(){
+		HttpResponse response;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("random","1387009135876"));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.submitinit);
+			httpPost.setEntity(uef);
+			List<Cookie> cookies =  httpClient.getCookieStore().getCookies();
+			StringBuilder builder = new StringBuilder();
+			for(Cookie cookie:cookies){
+				builder.append(cookie.getName()+"="+cookie.getValue()+";");
+			}
+			builder.append("_jc_save_czxxcx_toStation=%u957F%u6C99%2CCSQ;");
+			builder.append("_jc_save_czxxcx_fromDate=2013-12-11;");
+			builder.append("_jc_save_fromStation=%u6DF1%u5733%2CBJQ;");
+			builder.append("_jc_save_toStation=%u76CA%u9633%2CAEQ;");
+			builder.append("_jc_save_fromDate=2014-01-02;");
+			builder.append("_jc_save_toDate=2013-12-31;");
+			builder.append("_jc_save_wfdc_flag=dc");
+			httpPost.setHeader("Cookie",builder.toString());
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				searchOrder();
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void submitOrderRequest(String secretStr){
+		HttpResponse response;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("secretStr",URLDecoder.decode(secretStr)));
+			parameters.add(new BasicNameValuePair("train_date","2014-01-02"));
+			parameters.add(new BasicNameValuePair("back_train_date","2013-12-31"));
+			parameters.add(new BasicNameValuePair("tour_flag","dc"));
+			parameters.add(new BasicNameValuePair("purpose_codes","ADULT"));
+			parameters.add(new BasicNameValuePair("query_from_station_name","深圳"));
+			parameters.add(new BasicNameValuePair("query_to_station_name","益阳"));
+			parameters.add(new BasicNameValuePair("undefined",""));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.SUBMITORDERREQUEST);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				JSONObject jsonObject = JSON.parseObject(info);
+				if(jsonObject.getBooleanValue("status")){
+					initDc(httpClient);
+				}else{
+					logger.info(jsonObject.getString("messages"));
+				}
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void initDc(HttpClient httpClient){
+		HttpResponse response;
+		try {
+			URIBuilder builder = new URIBuilder();
+			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
+					.setPath(UrlNewEnum.initdc.getPath());
+			URI uri = builder.build();
+			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.initdc);
+			response = httpClient.execute(httpGet);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				Document document = Jsoup.parse(info);
+				Element element = document.text("globalRepeatSubmitToken");
+				element = element.getElementsByTag("script").get(0);
+				info = element.toString();
+				info = StringUtils.substring(info,73,105);
+				logger.info(info);
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
