@@ -12,6 +12,7 @@ import java.net.URLDecoder;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -340,7 +341,6 @@ public class ClientServer {
 				JSONObject jsonObject = JSONObject.parseObject(info);
 				JSONArray jsonArray = jsonObject.getJSONArray("data");
 				JSONObject object = jsonArray.getJSONObject(1);
-				checkuser();
 				submitOrderRequest(object.getString("secretStr"));
 			}
 		}catch (Exception e) {
@@ -409,21 +409,8 @@ public class ClientServer {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("random","1387009135876"));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
-			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.submitinit);
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.SUBMITINIT);
 			httpPost.setEntity(uef);
-			List<Cookie> cookies =  httpClient.getCookieStore().getCookies();
-			StringBuilder builder = new StringBuilder();
-			for(Cookie cookie:cookies){
-				builder.append(cookie.getName()+"="+cookie.getValue()+";");
-			}
-			builder.append("_jc_save_czxxcx_toStation=%u957F%u6C99%2CCSQ;");
-			builder.append("_jc_save_czxxcx_fromDate=2013-12-11;");
-			builder.append("_jc_save_fromStation=%u6DF1%u5733%2CBJQ;");
-			builder.append("_jc_save_toStation=%u76CA%u9633%2CAEQ;");
-			builder.append("_jc_save_fromDate=2014-01-02;");
-			builder.append("_jc_save_toDate=2013-12-31;");
-			builder.append("_jc_save_wfdc_flag=dc");
-			httpPost.setHeader("Cookie",builder.toString());
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 302) {
 			} else if (response.getStatusLine().getStatusCode() == 404) {
@@ -459,7 +446,7 @@ public class ClientServer {
 				String info = EntityUtils.toString(response.getEntity());
 				JSONObject jsonObject = JSON.parseObject(info);
 				if(jsonObject.getBooleanValue("status")){
-					initDc(httpClient);
+					initDc();
 				}else{
 					logger.info(jsonObject.getString("messages"));
 				}
@@ -469,14 +456,14 @@ public class ClientServer {
 		}
 	}
 	
-	public static void initDc(HttpClient httpClient){
+	public static void initDc(){
 		HttpResponse response;
 		try {
 			URIBuilder builder = new URIBuilder();
 			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
-					.setPath(UrlNewEnum.initdc.getPath());
+					.setPath(UrlNewEnum.INITDC.getPath());
 			URI uri = builder.build();
-			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.initdc);
+			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.INITDC);
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				String info = EntityUtils.toString(response.getEntity());
@@ -486,6 +473,73 @@ public class ClientServer {
 				info = element.toString();
 				info = StringUtils.substring(info,73,105);
 				logger.info(info);
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void checkOrderInfo(){
+		HttpResponse response;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("cancel_flag","2"));
+			parameters.add(new BasicNameValuePair("bed_level_order_num","000000000000000000000000000000"));
+			parameters.add(new BasicNameValuePair("passengerTicketStr","1,0,1,刘文波,1,430981198702272830,18606521059,N"));
+			parameters.add(new BasicNameValuePair("oldPassengerStr","刘文波,1,430981198702272830,1_"));
+			parameters.add(new BasicNameValuePair("tour_flag","2"));
+			parameters.add(new BasicNameValuePair("randCode","2"));
+			parameters.add(new BasicNameValuePair("_json_att",""));
+			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN","6465f1295a3546956d09b5e1d3648166"));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.CHECKORDERINFO);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				JSONObject jsonObject = JSON.parseObject(info);
+				if(jsonObject.getBooleanValue("status")
+						&& jsonObject.getJSONObject("data").getBooleanValue("submitStatus")){
+					getQueueCount();
+				}else{
+					logger.info(jsonObject.getString("messages"));
+				}
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void getQueueCount(){
+		HttpResponse response;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("train_date",new Date().toString()));
+			parameters.add(new BasicNameValuePair("train_no","65000K90760B"));
+			parameters.add(new BasicNameValuePair("stationTrainCode","K9076"));
+			parameters.add(new BasicNameValuePair("seatType","1"));
+			parameters.add(new BasicNameValuePair("fromStationTelecode","BJQ"));
+			parameters.add(new BasicNameValuePair("toStationTelecode","AEQ"));
+			parameters.add(new BasicNameValuePair("leftTicket","1016303232404980000110163003723031900000"));
+			parameters.add(new BasicNameValuePair("purpose_codes","00"));
+			parameters.add(new BasicNameValuePair("_json_att",""));
+			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN","6465f1295a3546956d09b5e1d3648166"));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.GETQUEUECOUNT);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				JSONObject jsonObject = JSON.parseObject(info);
+				if(jsonObject.getBooleanValue("status")){
+					
+				}else{
+					logger.info(jsonObject.getString("messages"));
+				}
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);

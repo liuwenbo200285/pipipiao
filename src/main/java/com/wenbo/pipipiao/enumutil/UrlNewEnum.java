@@ -13,8 +13,10 @@ public enum UrlNewEnum {
 	QUERY_MYORDER_NOCOMPLETE("queryOrder/queryMyOrderNoComplete","*/*","https://kyfw.12306.cn/otn/queryOrder/initNoComplete","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
 	SUBMITORDERREQUEST("leftTicket/submitOrderRequest","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
 	CHECKUSER("login/checkUser","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
-	submitinit("leftTicket/init","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
-	initdc("confirmPassenger/initDc","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","","");
+	SUBMITINIT("leftTicket/init","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
+	INITDC("confirmPassenger/initDc","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","",""),
+	CHECKORDERINFO("confirmPassenger/checkOrderInfo","application/json, text/javascript, */*; q=0.01","https://kyfw.12306.cn/otn/confirmPassenger/initDc","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
+	GETQUEUECOUNT("confirmPassenger/getQueueCount","","https://kyfw.12306.cn/otn/confirmPassenger/initDc","","");
 	private String path;
 	
 	private String accept;
