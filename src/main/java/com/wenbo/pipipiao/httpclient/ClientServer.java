@@ -57,6 +57,7 @@ import org.apache.http.util.EntityUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,6 +103,12 @@ public class ClientServer {
     private static ConfigInfo configInfo;
     
     private static UserInfo userInfo;
+    
+    private static JSONObject jObject;
+    
+    private static String key_check_isChange;
+    
+    private static String code;
 	
 	/**
 	 * 避免HttpClient的”SSLPeerUnverifiedException: peer not authenticated”异常
@@ -341,6 +348,7 @@ public class ClientServer {
 				JSONObject jsonObject = JSONObject.parseObject(info);
 				JSONArray jsonArray = jsonObject.getJSONArray("data");
 				JSONObject object = jsonArray.getJSONObject(1);
+				jObject = object;
 				submitOrderRequest(object.getString("secretStr"));
 			}
 		}catch (Exception e) {
@@ -466,12 +474,16 @@ public class ClientServer {
 			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.INITDC);
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
-				String info = EntityUtils.toString(response.getEntity());
-				Document document = Jsoup.parse(info);
+				String str = EntityUtils.toString(response.getEntity());
+				logger.info(str);
+				Document document = Jsoup.parse(str);
 				Element element = document.text("globalRepeatSubmitToken");
 				element = element.getElementsByTag("script").get(0);
-				info = element.toString();
+				String info = element.toString();
 				info = StringUtils.substring(info,73,105);
+				int n = StringUtils.indexOf(str,"key_check_isChange");
+				key_check_isChange = StringUtils.substring(str,n+18+3,n+15+62);
+				checkOrderInfo(info);
 				logger.info(info);
 			}
 		}catch (Exception e) {
@@ -479,18 +491,19 @@ public class ClientServer {
 		}
 	}
 	
-	public static void checkOrderInfo(){
+	public static void checkOrderInfo(String token){
 		HttpResponse response;
 		try {
+			code = getRandCode(UrlNewEnum.PASSENGER_RANGCODE);
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("cancel_flag","2"));
 			parameters.add(new BasicNameValuePair("bed_level_order_num","000000000000000000000000000000"));
 			parameters.add(new BasicNameValuePair("passengerTicketStr","1,0,1,刘文波,1,430981198702272830,18606521059,N"));
 			parameters.add(new BasicNameValuePair("oldPassengerStr","刘文波,1,430981198702272830,1_"));
-			parameters.add(new BasicNameValuePair("tour_flag","2"));
-			parameters.add(new BasicNameValuePair("randCode","2"));
+			parameters.add(new BasicNameValuePair("tour_flag","dc"));
+			parameters.add(new BasicNameValuePair("randCode",code));
 			parameters.add(new BasicNameValuePair("_json_att",""));
-			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN","6465f1295a3546956d09b5e1d3648166"));
+			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN",token));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
 			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.CHECKORDERINFO);
 			httpPost.setEntity(uef);
@@ -502,7 +515,7 @@ public class ClientServer {
 				JSONObject jsonObject = JSON.parseObject(info);
 				if(jsonObject.getBooleanValue("status")
 						&& jsonObject.getJSONObject("data").getBooleanValue("submitStatus")){
-					getQueueCount();
+					getQueueCount(token);
 				}else{
 					logger.info(jsonObject.getString("messages"));
 				}
@@ -512,20 +525,20 @@ public class ClientServer {
 		}
 	}
 	
-	public static void getQueueCount(){
+	public static void getQueueCount(String token){
 		HttpResponse response;
 		try {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("train_date",new Date().toString()));
-			parameters.add(new BasicNameValuePair("train_no","65000K90760B"));
-			parameters.add(new BasicNameValuePair("stationTrainCode","K9076"));
+			parameters.add(new BasicNameValuePair("train_no",jObject.getJSONObject("queryLeftNewDTO").getString("train_no")));
+			parameters.add(new BasicNameValuePair("stationTrainCode",jObject.getJSONObject("queryLeftNewDTO").getString("station_train_code")));
 			parameters.add(new BasicNameValuePair("seatType","1"));
-			parameters.add(new BasicNameValuePair("fromStationTelecode","BJQ"));
-			parameters.add(new BasicNameValuePair("toStationTelecode","AEQ"));
-			parameters.add(new BasicNameValuePair("leftTicket","1016303232404980000110163003723031900000"));
+			parameters.add(new BasicNameValuePair("fromStationTelecode",jObject.getJSONObject("queryLeftNewDTO").getString("from_station_telecode")));
+			parameters.add(new BasicNameValuePair("toStationTelecode",jObject.getJSONObject("queryLeftNewDTO").getString("to_station_telecode")));
+			parameters.add(new BasicNameValuePair("leftTicket",jObject.getJSONObject("queryLeftNewDTO").getString("yp_info")));
 			parameters.add(new BasicNameValuePair("purpose_codes","00"));
 			parameters.add(new BasicNameValuePair("_json_att",""));
-			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN","6465f1295a3546956d09b5e1d3648166"));
+			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN",token));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
 			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.GETQUEUECOUNT);
 			httpPost.setEntity(uef);
@@ -534,6 +547,41 @@ public class ClientServer {
 			} else if (response.getStatusLine().getStatusCode() == 404) {
 			} else if (response.getStatusLine().getStatusCode() == 200) {
 				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
+				JSONObject jsonObject = JSON.parseObject(info);
+				if(jsonObject.getBooleanValue("status")){
+					
+				}else{
+					logger.info(jsonObject.getString("messages"));
+				}
+			}
+		}catch (Exception e) {
+			logger.error("Login","获取用户联系人出错!",e);
+		}
+	}
+	
+	public static void confirmSingleForQueue(String token){
+		HttpResponse response;
+		try {
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("passengerTicketStr","1,0,1,刘文波,1,430981198702272830,18606521059,N"));
+			parameters.add(new BasicNameValuePair("oldPassengerStr","刘文波,1,430981198702272830,1_"));
+			parameters.add(new BasicNameValuePair("randCode",code));
+			parameters.add(new BasicNameValuePair("purpose_codes","00"));
+			parameters.add(new BasicNameValuePair("key_check_isChange",key_check_isChange));
+			parameters.add(new BasicNameValuePair("leftTicketStr","00"));
+			parameters.add(new BasicNameValuePair("train_location",jObject.getJSONObject("queryLeftNewDTO").getString("location_code")));
+			parameters.add(new BasicNameValuePair("_json_att",""));
+			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN",token));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.GETQUEUECOUNT);
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 302) {
+			} else if (response.getStatusLine().getStatusCode() == 404) {
+			} else if (response.getStatusLine().getStatusCode() == 200) {
+				String info = EntityUtils.toString(response.getEntity());
+				logger.info(info);
 				JSONObject jsonObject = JSON.parseObject(info);
 				if(jsonObject.getBooleanValue("status")){
 					

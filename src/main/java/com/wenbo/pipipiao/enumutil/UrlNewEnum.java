@@ -16,7 +16,9 @@ public enum UrlNewEnum {
 	SUBMITINIT("leftTicket/init","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
 	INITDC("confirmPassenger/initDc","*/*","https://kyfw.12306.cn/otn/leftTicket/init?random=1387009135876","",""),
 	CHECKORDERINFO("confirmPassenger/checkOrderInfo","application/json, text/javascript, */*; q=0.01","https://kyfw.12306.cn/otn/confirmPassenger/initDc","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
-	GETQUEUECOUNT("confirmPassenger/getQueueCount","","https://kyfw.12306.cn/otn/confirmPassenger/initDc","","");
+	GETQUEUECOUNT("confirmPassenger/getQueueCount","","https://kyfw.12306.cn/otn/confirmPassenger/initDc","",""),
+	PASSENGER_RANGCODE("passcodeNew/getPassCodeNew.do?module=passenger&rand=randp&0.15299957408569753","image/webp,*/*;q=0.8","https://kyfw.12306.cn/otn/confirmPassenger/initDc","",""),
+	CONFIRMSINGLEFORQUEUE("confirmPassenger/confirmSingleForQueue","application/json, text/javascript, */*; q=0.01","https://kyfw.12306.cn/otn/confirmPassenger/initDc","","");
 	private String path;
 	
 	private String accept;
