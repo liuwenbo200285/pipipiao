@@ -14,6 +14,7 @@ import java.security.cert.X509Certificate;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -113,6 +114,8 @@ public class ClientServer {
     private static String code;
     
     private static JSONArray seatObjectArray;
+    
+    private static Map<String,String> seatMap = null;
 	
 	/**
 	 * 避免HttpClient的”SSLPeerUnverifiedException: peer not authenticated”异常
@@ -222,8 +225,8 @@ public class ClientServer {
 	public static void test(HttpClient httpClient){
 		HttpResponse response;
 		try {
-			String username = "liuwenbo200285";
-			String password = "2580233";
+			String username = "yangxi200285";
+			String password = "liuwenbo520";
 			String randCode = getRandCode(UrlNewEnum.LOGIN_RANGCODE_URL);
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("loginUserDTO.user_name",username));
@@ -419,7 +422,7 @@ public class ClientServer {
 		HttpResponse response;
 		try {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
-			parameters.add(new BasicNameValuePair("secretStr",URLDecoder.decode(secretStr)));
+			parameters.add(new BasicNameValuePair("secretStr",URLDecoder.decode(secretStr,"utf-8")));
 			parameters.add(new BasicNameValuePair("train_date","2013-12-26"));
 			parameters.add(new BasicNameValuePair("back_train_date","2013-12-31"));
 			parameters.add(new BasicNameValuePair("tour_flag","dc"));
@@ -465,6 +468,13 @@ public class ClientServer {
 				int m = StringUtils.indexOf(str,";",n);
 				String ticket = StringUtils.substring(str,n+15,n+(m-n));
 				seatObjectArray = JSON.parseArray(ticket);
+				if(seatObjectArray.size() > 0){
+					seatMap = new HashMap<String, String>();
+					for(int i = 0; i < seatObjectArray.size(); i++){
+						JSONObject jsonObject = seatObjectArray.getJSONObject(i);
+						seatMap.put(URLDecoder.decode(jsonObject.getString("value"),"utf-8"),jsonObject.getString("id"));
+					}
+				}
 				n = StringUtils.indexOf(str,"key_check_isChange");
 				key_check_isChange = StringUtils.substring(str,n+21,n+77);
 				code = getRandCode(UrlNewEnum.PASSENGER_RANGCODE);
