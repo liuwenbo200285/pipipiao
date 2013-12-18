@@ -11,9 +11,11 @@ import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -109,6 +111,8 @@ public class ClientServer {
     private static String key_check_isChange;
     
     private static String code;
+    
+    private static JSONArray seatObjectArray;
 	
 	/**
 	 * 避免HttpClient的”SSLPeerUnverifiedException: peer not authenticated”异常
@@ -237,7 +241,7 @@ public class ClientServer {
 				JSONObject jsonObject = JSON.parseObject(info);
 				logger.info(jsonObject.getString("messages"));
 				if("Y".equals(jsonObject.getJSONObject("data").getString("loginCheck"))){
-					getPassengers(httpClient);
+					searchOrder();
 				}
 			}
 		}catch (Exception e) {
@@ -323,32 +327,25 @@ public class ClientServer {
 			URIBuilder builder = new URIBuilder();
 			builder.setScheme("https").setHost("kyfw.12306.cn/otn/")
 					.setPath(UrlNewEnum.SEARCH_TICKET.getPath())
-					.setParameter("leftTicketDTO.train_date", "2014-01-02")
+					.setParameter("leftTicketDTO.train_date", "2013-12-26")
 					.setParameter("leftTicketDTO.from_station","BJQ")
 					.setParameter("leftTicketDTO.to_station","AEQ")
 					.setParameter("purpose_codes","ADULT");
 			URI uri = builder.build();
 			HttpGet httpGet = HttpClientUtil.getNewHttpGet(uri,UrlNewEnum.SEARCH_TICKET);
-			List<Cookie> cookies =  httpClient.getCookieStore().getCookies();
-			StringBuilder stringBuilder = new StringBuilder();
-			for(Cookie cookie:cookies){
-				stringBuilder.append(cookie.getName()+"="+cookie.getValue()+";");
-			}
-			stringBuilder.append("_jc_save_czxxcx_toStation=%u957F%u6C99%2CCSQ;");
-			stringBuilder.append("_jc_save_czxxcx_fromDate=2013-12-11;");
-			stringBuilder.append("_jc_save_fromStation=%u6DF1%u5733%2CBJQ;");
-			stringBuilder.append("_jc_save_toStation=%u76CA%u9633%2CAEQ;");
-			stringBuilder.append("_jc_save_fromDate=2014-01-02;");
-			stringBuilder.append("_jc_save_toDate=2013-12-31;");
-			stringBuilder.append("_jc_save_wfdc_flag=dc");
-			httpGet.setHeader("Cookie",stringBuilder.toString());
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				String info = EntityUtils.toString(response.getEntity());
 				JSONObject jsonObject = JSONObject.parseObject(info);
 				JSONArray jsonArray = jsonObject.getJSONArray("data");
-				JSONObject object = jsonArray.getJSONObject(1);
-				jObject = object;
+				JSONObject object = null;
+				for(int i = 0; i < jsonArray.size(); i++){
+					object = jsonArray.getJSONObject(i);
+					if("K9076".equals(object.getJSONObject("queryLeftNewDTO").getString("station_train_code"))){
+						jObject = object;
+						break;
+					}
+				}
 				submitOrderRequest(object.getString("secretStr"));
 			}
 		}catch (Exception e) {
@@ -360,19 +357,6 @@ public class ClientServer {
 		HttpResponse response;
 		try {
 			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.CHECKUSER);
-			List<Cookie> cookies =  httpClient.getCookieStore().getCookies();
-			StringBuilder stringBuilder = new StringBuilder();
-			for(Cookie cookie:cookies){
-				stringBuilder.append(cookie.getName()+"="+cookie.getValue()+";");
-			}
-			stringBuilder.append("_jc_save_czxxcx_toStation=%u957F%u6C99%2CCSQ;");
-			stringBuilder.append("_jc_save_czxxcx_fromDate=2013-12-11;");
-			stringBuilder.append("_jc_save_fromStation=%u6DF1%u5733%2CBJQ;");
-			stringBuilder.append("_jc_save_toStation=%u76CA%u9633%2CAEQ;");
-			stringBuilder.append("_jc_save_fromDate=2014-01-02;");
-			stringBuilder.append("_jc_save_toDate=2013-12-31;");
-			stringBuilder.append("_jc_save_wfdc_flag=dc");
-			httpPost.setHeader("Cookie",stringBuilder.toString());
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 302) {
 			} else if (response.getStatusLine().getStatusCode() == 404) {
@@ -425,7 +409,6 @@ public class ClientServer {
 			} else if (response.getStatusLine().getStatusCode() == 200) {
 				String info = EntityUtils.toString(response.getEntity());
 				logger.info(info);
-				searchOrder();
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
@@ -437,7 +420,7 @@ public class ClientServer {
 		try {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("secretStr",URLDecoder.decode(secretStr)));
-			parameters.add(new BasicNameValuePair("train_date","2014-01-02"));
+			parameters.add(new BasicNameValuePair("train_date","2013-12-26"));
 			parameters.add(new BasicNameValuePair("back_train_date","2013-12-31"));
 			parameters.add(new BasicNameValuePair("tour_flag","dc"));
 			parameters.add(new BasicNameValuePair("purpose_codes","ADULT"));
@@ -475,26 +458,28 @@ public class ClientServer {
 			response = httpClient.execute(httpGet);
 			if (response.getStatusLine().getStatusCode() == 200) {
 				String str = EntityUtils.toString(response.getEntity());
-				logger.info(str);
-				Document document = Jsoup.parse(str);
-				Element element = document.text("globalRepeatSubmitToken");
-				element = element.getElementsByTag("script").get(0);
-				String info = element.toString();
-				info = StringUtils.substring(info,73,105);
-				int n = StringUtils.indexOf(str,"key_check_isChange");
-				key_check_isChange = StringUtils.substring(str,n+18+3,n+15+62);
+				//解析token
+				int n = StringUtils.indexOf(str,"globalRepeatSubmitToken");
+				String info = StringUtils.substring(str,n+27,n+59);
+				n = StringUtils.indexOf(str,"init_seatTypes");
+				int m = StringUtils.indexOf(str,";",n);
+				String ticket = StringUtils.substring(str,n+15,n+(m-n));
+				seatObjectArray = JSON.parseArray(ticket);
+				n = StringUtils.indexOf(str,"key_check_isChange");
+				key_check_isChange = StringUtils.substring(str,n+21,n+77);
+				code = getRandCode(UrlNewEnum.PASSENGER_RANGCODE);
 				checkOrderInfo(info);
 				logger.info(info);
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
+			e.printStackTrace();
 		}
 	}
 	
 	public static void checkOrderInfo(String token){
 		HttpResponse response;
 		try {
-			code = getRandCode(UrlNewEnum.PASSENGER_RANGCODE);
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
 			parameters.add(new BasicNameValuePair("cancel_flag","2"));
 			parameters.add(new BasicNameValuePair("bed_level_order_num","000000000000000000000000000000"));
@@ -517,7 +502,7 @@ public class ClientServer {
 						&& jsonObject.getJSONObject("data").getBooleanValue("submitStatus")){
 					getQueueCount(token);
 				}else{
-					logger.info(jsonObject.getString("messages"));
+					logger.info(info);
 				}
 			}
 		}catch (Exception e) {
@@ -529,7 +514,7 @@ public class ClientServer {
 		HttpResponse response;
 		try {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
-			parameters.add(new BasicNameValuePair("train_date",new Date().toString()));
+			parameters.add(new BasicNameValuePair("train_date",new SimpleDateFormat("yyyy-MM-dd",Locale.CHINESE).parse("2013-12-26").toString()));
 			parameters.add(new BasicNameValuePair("train_no",jObject.getJSONObject("queryLeftNewDTO").getString("train_no")));
 			parameters.add(new BasicNameValuePair("stationTrainCode",jObject.getJSONObject("queryLeftNewDTO").getString("station_train_code")));
 			parameters.add(new BasicNameValuePair("seatType","1"));
@@ -550,7 +535,7 @@ public class ClientServer {
 				logger.info(info);
 				JSONObject jsonObject = JSON.parseObject(info);
 				if(jsonObject.getBooleanValue("status")){
-					
+					confirmSingleForQueue(token,jsonObject.getJSONObject("data").getString("ticket"));
 				}else{
 					logger.info(jsonObject.getString("messages"));
 				}
@@ -560,7 +545,7 @@ public class ClientServer {
 		}
 	}
 	
-	public static void confirmSingleForQueue(String token){
+	public static void confirmSingleForQueue(String token,String ticket){
 		HttpResponse response;
 		try {
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
@@ -569,12 +554,12 @@ public class ClientServer {
 			parameters.add(new BasicNameValuePair("randCode",code));
 			parameters.add(new BasicNameValuePair("purpose_codes","00"));
 			parameters.add(new BasicNameValuePair("key_check_isChange",key_check_isChange));
-			parameters.add(new BasicNameValuePair("leftTicketStr","00"));
+			parameters.add(new BasicNameValuePair("leftTicketStr",ticket));
 			parameters.add(new BasicNameValuePair("train_location",jObject.getJSONObject("queryLeftNewDTO").getString("location_code")));
 			parameters.add(new BasicNameValuePair("_json_att",""));
 			parameters.add(new BasicNameValuePair("REPEAT_SUBMIT_TOKEN",token));
 			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
-			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.GETQUEUECOUNT);
+			HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.CONFIRMSINGLEFORQUEUE);
 			httpPost.setEntity(uef);
 			response = httpClient.execute(httpPost);
 			if (response.getStatusLine().getStatusCode() == 302) {
