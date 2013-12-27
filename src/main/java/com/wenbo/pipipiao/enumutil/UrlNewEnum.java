@@ -18,7 +18,12 @@ public enum UrlNewEnum {
 	CHECKORDERINFO("confirmPassenger/checkOrderInfo","application/json, text/javascript, */*; q=0.01","https://kyfw.12306.cn/otn/confirmPassenger/initDc","application/x-www-form-urlencoded; charset=UTF-8","XMLHttpRequest"),
 	GETQUEUECOUNT("confirmPassenger/getQueueCount","","https://kyfw.12306.cn/otn/confirmPassenger/initDc","",""),
 	PASSENGER_RANGCODE("passcodeNew/getPassCodeNew.do?module=passenger&rand=randp&0.15299957408569753","image/webp,*/*;q=0.8","https://kyfw.12306.cn/otn/confirmPassenger/initDc","",""),
-	CONFIRMSINGLEFORQUEUE("confirmPassenger/confirmSingleForQueue","application/json, text/javascript, */*; q=0.01","https://kyfw.12306.cn/otn/confirmPassenger/initDc","","");
+	CONFIRMSINGLEFORQUEUE("confirmPassenger/confirmSingleForQueue","application/json, text/javascript, */*; q=0.01","https://kyfw.12306.cn/otn/confirmPassenger/initDc","",""),
+	QUERYMYORDERNOCOMPLETE("queryOrder/queryMyOrderNoComplete","*/*","https://kyfw.12306.cn/otn/queryOrder/initNoComplete","",""),
+	CONTINUE_PAY_NOCOMPLETEMYORDER("queryOrder/continuePayNoCompleteMyOrder","*/*","https://kyfw.12306.cn/otn/payfinish/init","",""),
+	PAYORDER_INIT("payOrder/init","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8","https://kyfw.12306.cn/otn/payfinish/init","",""),
+	CANCELNOCOMPLETEMYORDER("queryOrder/cancelNoCompleteMyOrder","*/*","","",""),
+	TO_PAY("https://epay.12306.cn/pay/payGateway","","","","");
 	private String path;
 	
 	private String accept;

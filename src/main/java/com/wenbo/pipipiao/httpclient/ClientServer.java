@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
@@ -15,6 +16,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -68,6 +70,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wenbo.pipipiao.domain.ConfigInfo;
+import com.wenbo.pipipiao.domain.PayInfo;
 import com.wenbo.pipipiao.domain.UserInfo;
 import com.wenbo.pipipiao.enumutil.UrlNewEnum;
 import com.wenbo.pipipiao.util.ConfigUtil;
@@ -225,7 +228,7 @@ public class ClientServer {
 	public static void test(HttpClient httpClient){
 		HttpResponse response;
 		try {
-			String username = "yangxi200285";
+			String username = "liuwenbo201201";
 			String password = "liuwenbo520";
 			String randCode = getRandCode(UrlNewEnum.LOGIN_RANGCODE_URL);
 			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
@@ -244,7 +247,8 @@ public class ClientServer {
 				JSONObject jsonObject = JSON.parseObject(info);
 				logger.info(jsonObject.getString("messages"));
 				if("Y".equals(jsonObject.getJSONObject("data").getString("loginCheck"))){
-					searchOrder();
+//					searchOrder();
+					queryMyOrderNoComplete();
 				}
 			}
 		}catch (Exception e) {
@@ -372,7 +376,7 @@ public class ClientServer {
 		}
 	}
 	
-	public static void queryMyOrderNoComplete(HttpClient httpClient){
+	public static void queryMyOrderNoComplete(){
 		HttpResponse response;
 		try {
 			URIBuilder builder = new URIBuilder();
@@ -392,11 +396,93 @@ public class ClientServer {
 						logger.info(array.get(i).toString());
 					}
 				}
+				List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+				parameters.add(new BasicNameValuePair("sequence_no","E487436902"));
+				parameters.add(new BasicNameValuePair("pay_flag","pay"));
+				UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"UTF-8");
+				HttpPost httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.CONTINUE_PAY_NOCOMPLETEMYORDER);
+				httpPost.setEntity(uef);
+				response = httpClient.execute(httpPost);
+				if (response.getStatusLine().getStatusCode() == 302) {
+				} else if (response.getStatusLine().getStatusCode() == 404) {
+				} else if (response.getStatusLine().getStatusCode() == 200) {
+					httpPost = HttpClientUtil.getNewHttpPost(UrlNewEnum.PAYORDER_INIT);
+					response = httpClient.execute(httpPost);
+					info = EntityUtils.toString(response.getEntity());
+					logger.info(info);
+					toPaySubmit(info);
+				}
 			}
 		}catch (Exception e) {
 			logger.error("Login","获取用户联系人出错!",e);
 		}
 	}
+	
+	/**
+	 * 提交付款请求
+	 * @param inputStream
+	 * @return
+	 */
+    public static void toPaySubmit(String info){
+    	HttpResponse response = null;
+    	HttpPost httpPost = null;
+		try {
+			PayInfo payInfo = new PayInfo();
+			String data = null;
+			int n = StringUtils.indexOf(info,"interfaceName");
+			int m = StringUtils.indexOf(info,";",n);
+			data = StringUtils.substring(info,n+17,m-1);
+			payInfo.setInterfaceName(data);
+			n = StringUtils.indexOf(info,"interfaceVersion");
+			m = StringUtils.indexOf(info,";",n);
+			data = StringUtils.substring(info,n+20,m-1);
+			payInfo.setInterfaceVersion(data);
+			n = StringUtils.indexOf(info,"tranData");
+			m = StringUtils.indexOf(info,";",n);
+			data = StringUtils.substring(info,n+12,m-1);
+			data = StringUtils.replace(data,"\\r\\n","");
+			payInfo.setTranData(data);
+			n = StringUtils.indexOf(info,"merSignMsg");
+			m = StringUtils.indexOf(info,";",n);
+			data = StringUtils.substring(info,n+14,m-1);
+			data = StringUtils.replace(data,"\\r\\n","");
+			payInfo.setMerSignMsg(data);
+			n = StringUtils.indexOf(info,"appId");
+			m = StringUtils.indexOf(info,";",n);
+			data = StringUtils.substring(info,n+9,m-1);
+			payInfo.setAppId(data);
+			n = StringUtils.indexOf(info,"transType");
+			m = StringUtils.indexOf(info,";",n);
+			data = StringUtils.substring(info,n+13,m-1);
+			payInfo.setTransType(data);
+			List<BasicNameValuePair> parameters = new ArrayList<BasicNameValuePair>();
+			parameters.add(new BasicNameValuePair("interfaceName",payInfo.getInterfaceName()));
+			parameters.add(new BasicNameValuePair("interfaceVersion",payInfo.getInterfaceVersion()));
+			parameters.add(new BasicNameValuePair("tranData",payInfo.getTranData()));
+			parameters.add(new BasicNameValuePair("merSignMsg",payInfo.getMerSignMsg()));
+			parameters.add(new BasicNameValuePair("appId",payInfo.getAppId()));
+			parameters.add(new BasicNameValuePair("transType",payInfo.getTransType()));
+			UrlEncodedFormEntity uef = new UrlEncodedFormEntity(parameters,"utf-8");
+			httpPost = new HttpPost(UrlNewEnum.TO_PAY.getPath());
+			httpPost.addHeader("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17");
+			httpPost.setEntity(uef);
+			response = httpClient.execute(httpPost);
+			if (response.getStatusLine().getStatusCode() == 200) {
+				logger.info(EntityUtils.toString(response.getEntity()));
+			}else{
+				logger.info("toPaySubmit",EntityUtils.toString(response.getEntity()));
+			}
+		}catch(SocketTimeoutException socketTimeoutException){
+			logger.info("OperationUtil","getLastTime",socketTimeoutException);
+			toPaySubmit(info);
+		}catch (Exception e) {
+			logger.info("OperationUtil","toPaySubmit",e);
+		} finally {
+//			if(httpPost != null){
+//				httpPost.abort();
+//			}
+		}
+    }
 	
 	public static void submitinit(){
 		HttpResponse response;
